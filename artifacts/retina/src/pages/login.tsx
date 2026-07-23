@@ -26,8 +26,8 @@ export default function Login() {
 
   // Initialize particles.js background with interactive hover and click ripples
   useEffect(() => {
-    if (typeof particlesJS !== "undefined") {
-      particlesJS("particles-js", {
+    if (typeof (window as any).particlesJS === "function") {
+      (window as any).particlesJS("particles-js", {
         particles: {
           number: {
             value: 70,

@@ -130,14 +130,18 @@ const possibleFrontendDirs = [
   path.resolve(process.cwd(), "../retina/dist/public"),
   path.resolve(process.cwd(), "../vision2020/dist/public"),
   path.resolve(process.cwd(), "public"),
+  path.resolve(process.cwd(), "../../artifacts/retina/dist/public"),
 ];
 const frontendPublicDir = possibleFrontendDirs.find((d) => fs.existsSync(d));
 
 if (frontendPublicDir) {
+  logger.info(`Serving SPA frontend from ${frontendPublicDir}`);
   app.use(express.static(frontendPublicDir));
   app.get(/^(?!\/api).*$/, (_req, res) => {
     res.sendFile(path.join(frontendPublicDir, "index.html"));
   });
+} else {
+  logger.warn(`No SPA frontend directory found. Checked: ${possibleFrontendDirs.join(", ")}`);
 }
 
 // ── Global error handler ───────────────────────────────────────────────────────
