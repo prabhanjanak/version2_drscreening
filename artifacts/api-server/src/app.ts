@@ -126,10 +126,16 @@ app.get("/routemap.pdf", (_req, res) => {
 app.use("/api", router);
 
 // ── SPA fallback — serve frontend in production ────────────────────────────────
-const frontendPublicDir = path.resolve(process.cwd(), "../vision2020/dist/public");
-if (fs.existsSync(frontendPublicDir)) {
+const possibleFrontendDirs = [
+  path.resolve(process.cwd(), "../retina/dist/public"),
+  path.resolve(process.cwd(), "../vision2020/dist/public"),
+  path.resolve(process.cwd(), "public"),
+];
+const frontendPublicDir = possibleFrontendDirs.find((d) => fs.existsSync(d));
+
+if (frontendPublicDir) {
   app.use(express.static(frontendPublicDir));
-  app.get(/^(?!\/api).*$/, (req, res) => {
+  app.get(/^(?!\/api).*$/, (_req, res) => {
     res.sendFile(path.join(frontendPublicDir, "index.html"));
   });
 }
