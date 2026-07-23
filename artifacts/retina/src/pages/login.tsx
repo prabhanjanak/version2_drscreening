@@ -80,11 +80,11 @@ export default function Login() {
           },
         },
         interactivity: {
-          detect_on: "canvas",
+          detect_on: "window",
           events: {
             onhover: {
               enable: true,
-              mode: "repulse",
+              mode: ["grab", "repulse"],
             },
             onclick: {
               enable: true,
@@ -93,12 +93,18 @@ export default function Login() {
             resize: true,
           },
           modes: {
+            grab: {
+              distance: 180,
+              line_linked: {
+                opacity: 0.5,
+              },
+            },
             repulse: {
-              distance: 120,
+              distance: 140,
               duration: 0.4,
             },
             push: {
-              particles_nb: 3,
+              particles_nb: 4,
             },
           },
         },
