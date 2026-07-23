@@ -18,26 +18,11 @@ app.set("trust proxy", 1);
 // ── Security Headers (Helmet) ───────────────────────────────────────────────────
 app.use(
   helmet({
-    // Allow inline scripts / styles needed by the SPA (Vite/React)
-    contentSecurityPolicy: {
-      directives: {
-        defaultSrc: ["'self'"],
-        scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
-        styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-        fontSrc: ["'self'", "https://fonts.gstatic.com", "data:"],
-        imgSrc: ["'self'", "data:", "blob:", "https:"],
-        connectSrc: ["'self'", "https:", "wss:"],
-        frameSrc: ["'self'", "https://www.google.com/"],
-        objectSrc: ["'none'"],
-      },
-    },
-    // HSTS — tell browsers to always use HTTPS for 1 year (production only)
-    hsts: process.env.NODE_ENV === "production"
-      ? { maxAge: 31_536_000, includeSubDomains: true, preload: true }
-      : false,
-    // Standard protections
-    crossOriginEmbedderPolicy: false, // Needed for PDFs / QR codes inline
-    referrerPolicy: { policy: "strict-origin-when-cross-origin" },
+    contentSecurityPolicy: false,
+    crossOriginOpenerPolicy: false,
+    crossOriginResourcePolicy: false,
+    crossOriginEmbedderPolicy: false,
+    hsts: false,
   })
 );
 
