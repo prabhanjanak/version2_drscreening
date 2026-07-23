@@ -127,6 +127,7 @@ app.use("/api", router);
 
 // ── SPA fallback — serve frontend in production ────────────────────────────────
 const possibleFrontendDirs = [
+  path.resolve(process.cwd(), "artifacts/retina/dist/public"),
   path.resolve(process.cwd(), "../retina/dist/public"),
   path.resolve(process.cwd(), "../vision2020/dist/public"),
   path.resolve(process.cwd(), "public"),
