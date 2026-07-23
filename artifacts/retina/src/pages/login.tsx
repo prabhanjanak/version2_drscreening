@@ -115,52 +115,67 @@ export default function Login() {
 
   // Entrance animations timed at 500-700ms with easing
   useEffect(() => {
-    const tl = createTimeline({});
+    try {
+      const tl = createTimeline({});
 
-    tl.add(logoRef.current!, {
-      translateY: [-35, 0],
-      opacity: [0, 1],
-      duration: 600,
-      ease: "outQuad",
-    }, 50)
-    .add(badgeRef.current!, {
-      translateY: [25, 0],
-      opacity: [0, 1],
-      duration: 600,
-      ease: "outQuad",
-    }, 150)
-    .add(brandRef.current!, {
-      opacity: [0, 1],
-      duration: 500,
-      ease: "outQuad",
-    }, 250)
-    .add(cardRef.current!, {
-      translateY: [35, 0],
-      opacity: [0, 1],
-      duration: 650,
-      ease: "outQuad",
-    }, 300);
+      if (logoRef.current) {
+        tl.add(logoRef.current, {
+          translateY: [-35, 0],
+          opacity: [0, 1],
+          duration: 600,
+          ease: "outQuad",
+        }, 50);
+      }
 
-    // Staggered letters for Netrartha logo
-    animate(".nr-letter", {
-      opacity: [0, 1],
-      translateY: [10, 0],
-      delay: stagger(35, { start: 300 }),
-      duration: 350,
-      ease: "outQuad",
-    });
+      if (badgeRef.current) {
+        tl.add(badgeRef.current, {
+          translateY: [25, 0],
+          opacity: [0, 1],
+          duration: 600,
+          ease: "outQuad",
+        }, 150);
+      }
 
-    // Elegant pulse glow on title
-    animate(".nr-title-glow", {
-      textShadow: [
-        "0 0 8px rgba(255,107,0,0.25)",
-        "0 0 24px rgba(255,107,0,0.75)",
-        "0 0 8px rgba(255,107,0,0.25)",
-      ],
-      duration: 3000,
-      ease: "inOutSine",
-      loop: true,
-    });
+      if (brandRef.current) {
+        tl.add(brandRef.current, {
+          opacity: [0, 1],
+          duration: 500,
+          ease: "outQuad",
+        }, 250);
+      }
+
+      if (cardRef.current) {
+        tl.add(cardRef.current, {
+          translateY: [35, 0],
+          opacity: [0, 1],
+          duration: 650,
+          ease: "outQuad",
+        }, 300);
+      }
+
+      // Staggered letters for Netrartha logo
+      animate(".nr-letter", {
+        opacity: [0, 1],
+        translateY: [10, 0],
+        delay: stagger(35, { start: 300 }),
+        duration: 350,
+        ease: "outQuad",
+      });
+
+      // Elegant pulse glow on title
+      animate(".nr-title-glow", {
+        textShadow: [
+          "0 0 8px rgba(255,107,0,0.25)",
+          "0 0 24px rgba(255,107,0,0.75)",
+          "0 0 8px rgba(255,107,0,0.25)",
+        ],
+        duration: 3000,
+        loop: true,
+        ease: "inOutSine",
+      });
+    } catch (_err) {
+      // Fallback: ensure elements are fully visible if animation engine encounters missing DOM elements
+    }
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -220,7 +235,7 @@ export default function Login() {
   };
 
   const nameLetters = "Netrartha".split("").map((ch, i) => (
-    <span key={i} className="nr-letter inline-block" style={{ opacity: 0 }}>
+    <span key={i} className="nr-letter inline-block">
       {ch}
     </span>
   ));
@@ -246,7 +261,6 @@ export default function Login() {
         <div
           ref={logoRef}
           className="w-full max-w-[660px] bg-white/95 backdrop-blur-md rounded-2xl p-4 sm:p-5 shadow-[0_8px_30px_rgba(0,0,0,0.35),0_0_15px_rgba(255,107,0,0.1)] border border-slate-100/10 transition-all duration-300 hover:scale-[1.01] hover:shadow-[0_15px_40px_rgba(255,107,0,0.22)] flex items-center justify-center cursor-pointer"
-          style={{ opacity: 0 }}
         >
           <img
             src={bannerLogoImg}
@@ -259,7 +273,6 @@ export default function Login() {
         <div
           ref={badgeRef}
           className="w-full max-w-[600px] bg-slate-950/75 backdrop-blur-md rounded-2xl p-3 sm:p-4 border border-[#ffd700]/25 flex items-center gap-4 shadow-[0_8px_32px_rgba(0,0,0,0.4)] transition-all duration-300 hover:border-[#ffd700]/45 hover:bg-slate-950/85"
-          style={{ opacity: 0 }}
         >
           <div className="relative flex-shrink-0">
             {/* Subtle glow behind gold badge */}
@@ -287,7 +300,6 @@ export default function Login() {
         <div
           ref={brandRef}
           className="text-center flex flex-col items-center gap-0.5"
-          style={{ opacity: 0 }}
         >
           <div className="flex items-baseline justify-center gap-2">
             <h1
@@ -313,7 +325,6 @@ export default function Login() {
         <div
           ref={cardRef}
           className="w-full max-w-[450px] bg-white/95 backdrop-blur-xs rounded-[24px] shadow-[0_20px_50px_rgba(0,0,0,0.4),0_0_20px_rgba(0,0,0,0.05)] overflow-hidden border border-slate-100/50 transition-all duration-500 hover:translate-y-[-2px] hover:shadow-[0_25px_60px_rgba(255,107,0,0.12)]"
-          style={{ opacity: 0 }}
         >
           <div className="p-6 sm:p-8">
             {/* Header section with Shield Icon */}
