@@ -50,6 +50,54 @@ const REFERRAL_COLORS: Record<string, string> = {
   "Follow-up": "bg-indigo-100 text-indigo-800"
 };
 
+const getInitials = (name: string) => {
+  if (!name) return "PT";
+  const parts = name.trim().split(" ");
+  if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+  return name.slice(0, 2).toUpperCase();
+};
+
+const renderPatientAvatar = (p: PatientRecord) => {
+  const hasValidImage = p.imagePath && 
+    p.imagePath.length > 5 && 
+    !p.imagePath.includes("no_fundus_photo") && 
+    !p.imagePath.includes("placeholder") && 
+    !p.imagePath.includes("Pending") &&
+    !p.imagePath.includes("undefined");
+
+  if (hasValidImage) {
+    return (
+      <div className="h-16 w-16 rounded-xl border border-slate-200 overflow-hidden shrink-0 shadow-xs bg-slate-100 relative group flex items-center justify-center">
+        <img
+          src={p.imagePath}
+          alt={p.name}
+          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-110"
+          onError={(e) => {
+            (e.target as HTMLElement).style.display = 'none';
+          }}
+        />
+      </div>
+    );
+  }
+
+  const initials = getInitials(p.name);
+  const isFemale = p.gender?.toLowerCase() === "female";
+
+  return (
+    <div
+      className={`h-16 w-16 rounded-xl shrink-0 flex flex-col items-center justify-center border shadow-xs relative overflow-hidden select-none ${
+        isFemale
+          ? "bg-gradient-to-br from-rose-500 to-pink-600 border-rose-300 text-white"
+          : "bg-gradient-to-br from-slate-800 to-slate-900 border-slate-700 text-white"
+      }`}
+    >
+      <Eye className="absolute -bottom-2 -right-2 h-10 w-10 text-white/10 pointer-events-none" />
+      <span className="text-base font-extrabold tracking-wider leading-none">{initials}</span>
+      <span className="text-[9px] font-bold text-orange-400 mt-1 uppercase tracking-widest leading-none">SEH</span>
+    </div>
+  );
+};
+
 export default function DrsmsPatients() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -407,16 +455,7 @@ export default function DrsmsPatients() {
           {patients.map((p) => (
             <Card key={p.id} className="rounded-xl border border-slate-200/80 shadow-xs hover:shadow-md transition-all overflow-hidden bg-white">
               <div className="p-4 flex gap-4">
-                <div className="h-20 w-20 bg-slate-100 border border-slate-200 rounded-lg overflow-hidden shrink-0 flex items-center justify-center">
-                  {p.imagePath && !p.imagePath.includes("Pending") && p.imagePath !== "placeholder_fundus.jpg" ? (
-                    <img src={p.imagePath} alt="Fundus mini" className="h-full w-full object-cover" />
-                  ) : (
-                    <div className="flex flex-col items-center justify-center text-center p-1 bg-amber-50 h-full w-full border border-amber-200/60 rounded-lg">
-                      <Upload className="h-5 w-5 text-[#FF6B00]" />
-                      <span className="text-[8px] font-extrabold text-amber-700 leading-tight mt-0.5">Pending Image</span>
-                    </div>
-                  )}
-                </div>
+                {renderPatientAvatar(p)}
 
                 <div className="flex-1 min-w-0 space-y-1">
                   <div className="flex justify-between items-start gap-2">
