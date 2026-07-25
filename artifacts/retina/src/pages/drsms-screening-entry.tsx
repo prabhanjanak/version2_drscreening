@@ -390,10 +390,8 @@ export default function DrsmsScreeningEntry() {
   };
 
   const onSubmit = async (values: FormValues) => {
-    if (!imagePreview) {
-      toast({ title: "Fundus Photo Required", description: "Please upload or capture a fundus image.", variant: "destructive" });
-      return;
-    }
+    // Fundus image is optional. If not uploaded, fallback to default placeholder.
+    const effectiveImagePreview = imagePreview || "/uploads/no_fundus_photo.png";
 
     if (!isOnline) {
       const bloodPressureStr = `${values.systolicBP}/${values.diastolicBP}`;
@@ -411,7 +409,7 @@ export default function DrsmsScreeningEntry() {
         bloodPressure: bloodPressureStr,
         drStatus: values.drStatus,
         advice: values.advice,
-        imagePath: imagePreview,
+        imagePath: effectiveImagePreview,
         imageQuality: values.imageQuality,
         latitude: values.latitude,
         longitude: values.longitude,
@@ -465,7 +463,7 @@ export default function DrsmsScreeningEntry() {
         const imgData = await imgRes.json();
         remoteImagePath = imgData.imagePath;
       } else {
-        remoteImagePath = imagePreview;
+        remoteImagePath = imagePreview || "/uploads/no_fundus_photo.png";
       }
 
       const bloodPressureStr = `${values.systolicBP}/${values.diastolicBP}`;
@@ -785,8 +783,8 @@ export default function DrsmsScreeningEntry() {
           </CardHeader>
           <CardContent className="p-4 md:p-6 grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
             <div className="md:col-span-2">
-              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-2">Diabetes Duration *</label>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
+              <label className="block text-xs sm:text-sm font-bold text-slate-700 uppercase mb-2">Diabetes Duration *</label>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2.5">
                 {DIABETES_DURATION_OPTIONS.map((d) => {
                   const currentDuration = watch("diabetesDuration");
                   const active = currentDuration === d;
@@ -795,10 +793,10 @@ export default function DrsmsScreeningEntry() {
                       key={d}
                       type="button"
                       onClick={() => handleFieldChange("diabetesDuration", d)}
-                      className={`py-2 text-[10px] font-extrabold rounded-xl border transition-all text-center ${
+                      className={`py-3 px-3 text-xs sm:text-sm font-extrabold rounded-xl border transition-all text-center ${
                         active 
-                          ? "bg-orange-500 border-[#FF6B00] text-white shadow-xs" 
-                          : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+                          ? "bg-orange-500 border-[#FF6B00] text-white shadow-md scale-[1.02]" 
+                          : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
                       }`}
                     >
                       {d}
@@ -806,7 +804,7 @@ export default function DrsmsScreeningEntry() {
                   );
                 })}
               </div>
-              {errors.diabetesDuration && <p className="text-red-500 text-[10px] mt-1">{errors.diabetesDuration.message}</p>}
+              {errors.diabetesDuration && <p className="text-red-500 text-xs mt-1">{errors.diabetesDuration.message}</p>}
             </div>
 
             <div>
@@ -990,8 +988,8 @@ export default function DrsmsScreeningEntry() {
           <CardContent className="p-4 md:p-6 space-y-4 text-xs">
             <div className="space-y-4">
               <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-2">DR Diagnosis *</label>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <label className="block text-xs sm:text-sm font-bold text-slate-700 uppercase mb-2">DR Diagnosis *</label>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                   {DR_STATUS_OPTIONS.map((dr) => {
                     const currentDr = watch("drStatus");
                     const active = currentDr === dr;
@@ -1000,10 +998,10 @@ export default function DrsmsScreeningEntry() {
                         key={dr}
                         type="button"
                         onClick={() => handleFieldChange("drStatus", dr)}
-                        className={`py-2 text-[10px] font-extrabold rounded-xl border transition-all text-center ${
+                        className={`py-3 px-3.5 text-xs sm:text-sm font-extrabold rounded-xl border transition-all text-center ${
                           active 
-                            ? "bg-orange-500 border-[#FF6B00] text-white shadow-xs" 
-                            : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+                            ? "bg-orange-500 border-[#FF6B00] text-white shadow-md scale-[1.02]" 
+                            : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
                         }`}
                       >
                         {dr}
@@ -1011,12 +1009,12 @@ export default function DrsmsScreeningEntry() {
                     );
                   })}
                 </div>
-                {errors.drStatus && <p className="text-red-500 text-[10px] mt-1">{errors.drStatus.message}</p>}
+                {errors.drStatus && <p className="text-red-500 text-xs mt-1">{errors.drStatus.message}</p>}
               </div>
 
               <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-2">Advice / Action Plan *</label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <label className="block text-xs sm:text-sm font-bold text-slate-700 uppercase mb-2">Advice / Action Plan *</label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                   {ADVICE_OPTIONS.map((a) => {
                     const currentAdvice = watch("advice");
                     const active = currentAdvice === a;
@@ -1025,10 +1023,10 @@ export default function DrsmsScreeningEntry() {
                         key={a}
                         type="button"
                         onClick={() => handleFieldChange("advice", a)}
-                        className={`py-2.5 px-3 text-[10px] font-extrabold rounded-xl border transition-all text-left ${
+                        className={`py-3 px-4 text-xs sm:text-sm font-extrabold rounded-xl border transition-all text-left ${
                           active 
-                            ? "bg-orange-500 border-[#FF6B00] text-white shadow-xs" 
-                            : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+                            ? "bg-orange-500 border-[#FF6B00] text-white shadow-md scale-[1.01]" 
+                            : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
                         }`}
                       >
                         {a}
@@ -1036,7 +1034,7 @@ export default function DrsmsScreeningEntry() {
                     );
                   })}
                 </div>
-                {errors.advice && <p className="text-red-500 text-[10px] mt-1">{errors.advice.message}</p>}
+                {errors.advice && <p className="text-red-500 text-xs mt-1">{errors.advice.message}</p>}
               </div>
             </div>
 
