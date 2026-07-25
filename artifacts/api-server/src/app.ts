@@ -114,9 +114,12 @@ app.use("/api", router);
 const possibleFrontendDirs = [
   path.resolve(process.cwd(), "artifacts/retina/dist/public"),
   path.resolve(process.cwd(), "../retina/dist/public"),
-  path.resolve(process.cwd(), "../vision2020/dist/public"),
   path.resolve(process.cwd(), "public"),
+  path.resolve(process.cwd(), "dist/public"),
   path.resolve(process.cwd(), "../../artifacts/retina/dist/public"),
+  path.resolve(import.meta.dirname, "public"),
+  path.resolve(import.meta.dirname, "../retina/dist/public"),
+  path.resolve(import.meta.dirname, "../../retina/dist/public"),
 ];
 const frontendPublicDir = possibleFrontendDirs.find((d) => fs.existsSync(d));
 
