@@ -164,11 +164,4 @@ VALUES
   ('Sagar Vision Center', 'VC-SGR', 'Shimoga', 'Karnataka', 'Shimoga', 'BH Road, Sagar', '08183-221100', 'active')
 ON CONFLICT ("short_code") DO NOTHING;
 
--- SEED DIABETIC RETINOPATHY PATIENT RECORDS
--- Unique ID Standard: SEH/DR/DDMMYYYY/SerialNumber
-INSERT INTO "patients" ("unique_id", "date", "screening_place_code", "serial_number", "name", "age", "gender", "address", "phone", "diabetes_duration", "blood_pressure", "dr_status", "advice", "image_path", "image_quality", "referral_status", "refer_to_base_hospital", "created_by")
-VALUES 
-  ('SEH/DR/25072026/0001', '2026-07-25', 'SHIMOGA', 1, 'Ramesh Rao', 54, 'Male', 'Shimoga Town', '9876543210', '6 Years', '130/85', 'Moderate NPDR', 'Refer to Base Hospital for OCT & Laser evaluation', '/uploads/retina_sample_1.png', 'Good', 'Referred', true, 1),
-  ('SEH/DR/25072026/0002', '2026-07-25', 'CAMP-CTA', 2, 'Sunanda Gowda', 61, 'Female', 'Chitradurga Rural', '9876543211', '10 Years', '140/90', 'Severe NPDR', 'Urgent Anti-VEGF / Laser consultation required at Base Hospital', '/uploads/retina_sample_2.png', 'Good', 'Referred', true, 1),
-  ('SEH/DR/25072026/0003', '2026-07-25', 'CAMP-DVG', 3, 'Basavarajappa', 48, 'Male', 'Davanagere', '9876543212', '3 Years', '120/80', 'No DR', 'Annual DR rescreening in 12 months', '/uploads/retina_sample_3.png', 'Good', 'Follow-up', false, 1)
-ON CONFLICT ("unique_id") DO NOTHING;
+-- VISION CENTERS SEED COMPLETED. PATIENTS TABLE STARTS EMPTY FOR REAL PRODUCTION SCREENINGS.
