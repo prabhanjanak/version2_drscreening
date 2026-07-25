@@ -38,16 +38,11 @@ type FormValues = z.infer<typeof screeningFormSchema>;
 const GENDER_OPTIONS = ["Male", "Female", "Other"];
 
 const DIABETES_DURATION_OPTIONS = [
-  "No Diabetes",
   "Newly Diagnosed",
-  "<1 Year",
-  "1 Year",
-  "2 Years",
-  "3 Years",
-  "4 Years",
-  "5 Years",
-  "10 Years",
-  "15+ Years"
+  "0-1 Year",
+  "1-5 Years",
+  "5-10 Years",
+  "10+ Years",
 ];
 
 const DR_STATUS_OPTIONS = [
@@ -68,7 +63,7 @@ const ADVICE_OPTIONS = [
   "Urgent Retina Consultation",
   "Laser Required",
   "Injection Required",
-  "Refer to Sankara Base Hospital",
+  "Surgery Advised",
   "Others",
 ];
 
