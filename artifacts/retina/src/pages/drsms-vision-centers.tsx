@@ -350,16 +350,18 @@ export default function DrsmsVisionCenters() {
     setGender("Male");
     setPatientPhone("");
     setPatientAddress("");
-    // Find first active camp under this unit
-    const unitCamps = camps.filter(c => c.sankaraUnit === vc.sankaraUnit || !c.sankaraUnit);
-    setTargetCampCode(unitCamps[0]?.shortCode || "");
+    // Find first active camp under this unit or fallback to first overall camp
+    const unitCamp = camps.find(c => c.sankaraUnit === vc.sankaraUnit || !c.sankaraUnit);
+    const defaultCampCode = unitCamp?.shortCode || camps[0]?.shortCode || "SHIMOGA";
+    setTargetCampCode(defaultCampCode);
     setDrNotes("");
     setReferModalOpen(true);
   };
 
   const handleSendReferral = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!patientName || !age || !gender || !patientPhone || !targetCampCode || !referringVc) {
+    const effectiveCampCode = targetCampCode || camps[0]?.shortCode || "SHIMOGA";
+    if (!patientName || !age || !gender || !patientPhone || !effectiveCampCode || !referringVc) {
       toast({ title: "Validation Error", description: "Please complete patient name, age, phone, and target DR camp.", variant: "destructive" });
       return;
     }
@@ -370,12 +372,12 @@ export default function DrsmsVisionCenters() {
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({
           patientName,
-          age,
+          age: parseInt(String(age), 10),
           gender,
-          phone: patientPhone,
-          address: patientAddress,
+          phone: patientPhone.trim(),
+          address: patientAddress || null,
           visionCenterCode: referringVc.shortCode,
-          targetCampCode,
+          targetCampCode: effectiveCampCode,
           drNotes,
         }),
       });
@@ -385,8 +387,9 @@ export default function DrsmsVisionCenters() {
         throw new Error(err.error || "Failed to submit referral");
       }
 
-      toast({ title: "Referral Submitted!", description: `Patient ${patientName} referred to DR Camp ${targetCampCode}.` });
+      toast({ title: "Referral Submitted!", description: `Patient ${patientName} referred to DR Camp ${effectiveCampCode}.` });
       setReferModalOpen(false);
+      fetchData();
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     }
