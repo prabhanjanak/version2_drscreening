@@ -5,6 +5,7 @@
   "scripts": {
     "preinstall": "npx only-allow pnpm",
     "build": "pnpm --filter @workspace/retina run build && pnpm --filter @workspace/api-server run build",
+    "dev": "pnpm --parallel --filter @workspace/api-server --filter @workspace/retina run dev",
     "start": "pnpm --filter @workspace/api-server run start",
     "typecheck:libs": "tsc --build",
     "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck"
