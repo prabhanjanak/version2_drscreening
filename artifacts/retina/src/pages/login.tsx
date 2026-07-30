@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
@@ -6,9 +6,33 @@ import bannerLogoImg from "@assets/sankara_eye_icon.png";
 import campBgImg from "@assets/village_eye_camp_bg.png";
 import { 
   Eye, EyeOff, Loader2, Lock, User, ShieldCheck, 
-  Award, ArrowRight, Key, Heart, Building2, UserCheck
+  Award, ArrowRight, Key, Heart, Building2, UserCheck, MapPin, Activity, Sparkles, Check
 } from "lucide-react";
 import { animate } from "animejs";
+
+interface HospitalPin {
+  id: string;
+  city: string;
+  state: string;
+  x: number; // percentage in SVG
+  y: number;
+  surgeries: string;
+  type: string;
+}
+
+const SANKARA_LOCATIONS: HospitalPin[] = [
+  { id: "cbe", city: "Coimbatore", state: "Tamil Nadu (HQ)", x: 42, y: 82, surgeries: "800,000+", type: "Super Specialty Base Hospital" },
+  { id: "blr", city: "Bangalore", state: "Karnataka", x: 46, y: 74, surgeries: "500,000+", type: "Super Specialty Hospital" },
+  { id: "smg", city: "Shimoga", state: "Karnataka", x: 40, y: 70, surgeries: "250,000+", type: "Outreach & Base Hospital" },
+  { id: "gtr", city: "Guntur", state: "Andhra Pradesh", x: 56, y: 64, surgeries: "400,000+", type: "Super Specialty Hospital" },
+  { id: "hyd", city: "Hyderabad", state: "Telangana", x: 50, y: 58, surgeries: "200,000+", type: "Eye Care Center" },
+  { id: "and", city: "Anand", state: "Gujarat", x: 26, y: 44, surgeries: "350,000+", type: "Super Specialty Hospital" },
+  { id: "jpr", city: "Jaipur", state: "Rajasthan", x: 34, y: 32, surgeries: "200,000+", type: "Super Specialty Hospital" },
+  { id: "ldh", city: "Ludhiana", state: "Punjab", x: 36, y: 18, surgeries: "300,000+", type: "Super Specialty Hospital" },
+  { id: "knp", city: "Kanpur", state: "Uttar Pradesh", x: 55, y: 34, surgeries: "250,000+", type: "Super Specialty Hospital" },
+  { id: "ind", city: "Indore", state: "Madhya Pradesh", x: 38, y: 46, surgeries: "180,000+", type: "Eye Care Hospital" },
+  { id: "pnv", city: "Mumbai / Panvel", state: "Maharashtra", x: 28, y: 56, surgeries: "150,000+", type: "Regional Eye Hospital" },
+];
 
 export default function Login() {
   const { login } = useAuth();
@@ -20,8 +44,19 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [activeRole, setActiveRole] = useState<string | null>(null);
+  const [hoveredPin, setHoveredPin] = useState<HospitalPin | null>(SANKARA_LOCATIONS[0]);
 
   const cardRef = useRef<HTMLDivElement>(null);
+
+  // Auto-cycle through hospital locations for dynamic animation
+  useEffect(() => {
+    let index = 0;
+    const interval = setInterval(() => {
+      index = (index + 1) % SANKARA_LOCATIONS.length;
+      setHoveredPin(SANKARA_LOCATIONS[index]);
+    }, 3500);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -101,26 +136,26 @@ export default function Login() {
   };
 
   return (
-    <div className="relative min-h-screen w-screen bg-slate-900 flex flex-col justify-between overflow-x-hidden font-sans select-none">
+    <div className="relative min-h-screen w-screen bg-slate-950 flex flex-col justify-between overflow-x-hidden font-sans select-none">
       
-      {/* 1. REALISTIC VILLAGE EYE CAMP BACKGROUND IMAGE */}
+      {/* 1. REALISTIC EYE CAMP BACKGROUND IMAGE WITH WHITE FADING OVERLAY */}
       <div className="absolute inset-0 z-0">
         <img
           src={campBgImg}
           alt="Sankara Eye Foundation Community Outreach Camp"
-          className="w-full h-full object-cover object-left-top scale-[1.02]"
+          className="w-full h-full object-cover object-left-top scale-[1.02] filter brightness-90"
         />
-        {/* White fading gradient overlay across the right half for high legibility */}
-        <div className="absolute inset-0 bg-gradient-to-r from-slate-950/60 via-slate-900/40 to-white/95 sm:to-white/95 lg:from-transparent lg:via-white/70 lg:to-white" />
-        <div className="absolute inset-0 bg-gradient-to-t from-white via-transparent to-black/30 lg:hidden" />
+        {/* Soft white fading gradient overlay across the right half */}
+        <div className="absolute inset-0 bg-gradient-to-r from-slate-950/80 via-slate-900/60 to-white/95 lg:from-slate-950/70 lg:via-white/80 lg:to-white" />
+        <div className="absolute inset-0 bg-gradient-to-t from-white via-transparent to-black/40 lg:hidden" />
       </div>
 
-      {/* 2. MAIN 2-COLUMN LUXURY CONTENT */}
+      {/* 2. MAIN CONTENT GRID */}
       <main className="relative z-10 flex-1 w-full max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8 flex items-center justify-center">
         <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
           
-          {/* LEFT COLUMN: REALISTIC OUTREACH BRANDING & HERO TEXT */}
-          <div className="lg:col-span-6 flex flex-col justify-center space-y-6 text-white drop-shadow-md">
+          {/* LEFT COLUMN: ANIMATED INDIA MAP & SANKARA NATIONWIDE OUTREACH */}
+          <div className="lg:col-span-6 flex flex-col justify-center space-y-5 text-white">
             
             {/* Header Brand Bar */}
             <div className="inline-flex items-center gap-3 bg-white/95 backdrop-blur-md px-5 py-3 rounded-2xl border border-white/20 shadow-xl max-w-fit">
@@ -132,10 +167,10 @@ export default function Login() {
             </div>
 
             {/* Title & Tagline */}
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <div className="flex items-center gap-3">
                 <h1 
-                  className="text-4xl sm:text-5xl font-black text-white lg:text-slate-900 tracking-tight drop-shadow-md lg:drop-shadow-none"
+                  className="text-4xl sm:text-5xl font-black text-white lg:text-slate-950 tracking-tight drop-shadow-md lg:drop-shadow-none"
                   style={{ fontFamily: "'Samarkan', serif" }}
                 >
                   Netrartha
@@ -144,32 +179,145 @@ export default function Login() {
                   v1.0
                 </span>
               </div>
-              <p className="text-sm sm:text-base text-orange-300 lg:text-[#FF6B00] font-extrabold tracking-wide uppercase">
+              <p className="text-sm sm:text-base text-orange-400 lg:text-[#FF6B00] font-extrabold tracking-wide uppercase">
                 Serving Vision. Transforming Lives.
               </p>
               <p className="text-xs sm:text-sm text-slate-200 lg:text-slate-700 max-w-lg font-medium leading-relaxed">
-                Diabetic Retinopathy (DR) Community Screening & Tele-Ophthalmology Portal for Sankara Eye Foundation Outreach Staff, Doctors & Field Referrals.
+                National Diabetic Retinopathy (DR) Screening & Tele-Ophthalmology Network by Sankara Eye Foundation.
               </p>
             </div>
 
-            {/* 50 Years Golden Jubilee Banner */}
-            <div className="bg-slate-950/85 backdrop-blur-md rounded-2xl p-4 border border-amber-400/30 flex items-center gap-4 shadow-xl max-w-lg">
-              <img
-                src="/sankara-50th-logo.png"
-                alt="Sankara 50th Golden Jubilee"
-                className="h-12 sm:h-14 w-auto object-contain filter drop-shadow-[0_0_8px_rgba(251,191,36,0.3)] shrink-0"
-              />
-              <div className="space-y-0.5">
-                <div className="flex items-center gap-1.5 text-[#FFD700] text-[10px] font-black tracking-widest uppercase">
-                  <Award className="h-3.5 w-3.5" /> 50 Years of Service (1977 - 2027)
+            {/* INTERACTIVE ANIMATED INDIA MAP CARD */}
+            <div className="relative bg-slate-900/90 backdrop-blur-xl rounded-3xl p-4 border border-orange-500/30 shadow-2xl overflow-hidden group">
+              
+              {/* Map Header Info */}
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <span className="h-2.5 w-2.5 rounded-full bg-[#FF6B00] animate-ping" />
+                  <span className="text-xs font-black text-white uppercase tracking-wider">
+                    Sankara Super Specialty Network Across India
+                  </span>
                 </div>
-                <p className="text-sm font-bold text-white">
-                  3 Million+ <span className="text-[#FF6B00]">Free Eye Surgeries</span>
-                </p>
-                <p className="text-[11px] text-slate-300 font-medium">
-                  Reaching Underserved Rural & Tribal Communities Across India
-                </p>
+                <span className="text-[10px] font-bold text-amber-400 bg-amber-400/10 border border-amber-400/20 px-2 py-0.5 rounded-full">
+                  13+ Super Specialty Hospitals
+                </span>
               </div>
+
+              {/* SVG India Map Vector with Pulsing Hospital Pins */}
+              <div className="relative w-full h-64 sm:h-72 flex items-center justify-center bg-[#071325]/80 rounded-2xl p-2 border border-slate-800">
+                
+                {/* SVG India Map Outline Path */}
+                <svg viewBox="0 0 200 220" className="w-full h-full max-h-full object-contain filter drop-shadow-[0_0_12px_rgba(255,107,0,0.25)]">
+                  {/* Stylized India Landmass Outline Path */}
+                  <path
+                    d="M 60,30 Q 75,10 95,15 Q 115,20 120,35 Q 125,50 140,55 Q 160,60 170,75 Q 180,90 165,100 Q 150,110 160,125 Q 170,140 155,150 Q 140,160 135,175 Q 130,190 115,200 Q 105,210 95,205 Q 85,200 80,185 Q 75,170 65,160 Q 55,150 50,135 Q 45,120 35,110 Q 25,100 30,85 Q 35,70 45,60 Z"
+                    fill="rgba(15, 23, 42, 0.9)"
+                    stroke="#FF6B00"
+                    strokeWidth="1.2"
+                    strokeDasharray="4 2"
+                    className="animate-pulse"
+                  />
+
+                  {/* Connecting Animated Optic Network Lines */}
+                  {SANKARA_LOCATIONS.map((loc, idx) => (
+                    <line
+                      key={`line-${loc.id}`}
+                      x1="42"
+                      y1="82"
+                      x2={loc.x * 2}
+                      y2={loc.y * 2.2}
+                      stroke="rgba(255, 107, 0, 0.25)"
+                      strokeWidth="0.8"
+                      strokeDasharray="2 2"
+                    />
+                  ))}
+
+                  {/* Pulsing Hospital Pin Markers */}
+                  {SANKARA_LOCATIONS.map((loc) => {
+                    const isSelected = hoveredPin?.id === loc.id;
+                    const cx = loc.x * 2;
+                    const cy = loc.y * 2.2;
+
+                    return (
+                      <g
+                        key={loc.id}
+                        className="cursor-pointer transition-transform duration-300 hover:scale-125"
+                        onMouseEnter={() => setHoveredPin(loc)}
+                        onClick={() => setHoveredPin(loc)}
+                      >
+                        {/* Sonar Ripple Ring */}
+                        <circle
+                          cx={cx}
+                          cy={cy}
+                          r={isSelected ? "7" : "4"}
+                          fill="none"
+                          stroke={isSelected ? "#FF6B00" : "#38BDF8"}
+                          strokeWidth="1"
+                          opacity="0.8"
+                        >
+                          <animate
+                            attributeName="r"
+                            values={isSelected ? "4;12;4" : "3;8;3"}
+                            dur={isSelected ? "1.5s" : "3s"}
+                            repeatCount="indefinite"
+                          />
+                          <animate
+                            attributeName="opacity"
+                            values="0.9;0.1;0.9"
+                            dur={isSelected ? "1.5s" : "3s"}
+                            repeatCount="indefinite"
+                          />
+                        </circle>
+
+                        {/* Solid Pin Core */}
+                        <circle
+                          cx={cx}
+                          cy={cy}
+                          r={isSelected ? "4" : "2.5"}
+                          fill={isSelected ? "#FF6B00" : "#FFFFFF"}
+                          stroke="#000000"
+                          strokeWidth="0.8"
+                        />
+                      </g>
+                    );
+                  })}
+                </svg>
+
+                {/* Live Tooltip Card for Selected Hospital Location */}
+                {hoveredPin && (
+                  <div className="absolute bottom-3 left-3 right-3 bg-slate-950/90 backdrop-blur-md p-2.5 rounded-xl border border-orange-500/40 flex items-center justify-between shadow-lg transition-all animate-fadeIn">
+                    <div className="space-y-0.5">
+                      <div className="flex items-center gap-1.5">
+                        <MapPin className="h-3.5 w-3.5 text-[#FF6B00]" />
+                        <span className="font-extrabold text-xs text-white">
+                          Sankara Eye Hospital — {hoveredPin.city}
+                        </span>
+                        <span className="text-[9px] bg-orange-500/20 text-orange-400 font-bold px-1.5 py-0.5 rounded">
+                          {hoveredPin.state}
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-slate-300 font-medium">
+                        {hoveredPin.type} &bull; <strong className="text-amber-400">{hoveredPin.surgeries} Free Surgeries</strong>
+                      </p>
+                    </div>
+                    <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                  </div>
+                )}
+              </div>
+
+              {/* Bottom Ticker */}
+              <div className="mt-2.5 flex items-center justify-between text-[11px] text-slate-300 font-semibold px-1">
+                <span className="flex items-center gap-1">
+                  <Check className="h-3.5 w-3.5 text-emerald-400" /> 3M+ Surgeries
+                </span>
+                <span className="flex items-center gap-1">
+                  <Building2 className="h-3.5 w-3.5 text-blue-400" /> 100+ Vision Centers
+                </span>
+                <span className="flex items-center gap-1 text-[#FF6B00]">
+                  <Heart className="h-3.5 w-3.5" /> 80% Free Surgeries
+                </span>
+              </div>
+
             </div>
 
           </div>
