@@ -10,7 +10,7 @@ import '../services/database_helper.dart';
 class PatientListView extends StatefulWidget {
   final UserModel user;
 
-  const PatientListView({Key? key, required this.user}) : super(key: key);
+  const PatientListView({super.key, required this.user});
 
   @override
   State<PatientListView> createState() => _PatientListViewState();
@@ -18,7 +18,6 @@ class PatientListView extends StatefulWidget {
 
 class _PatientListViewState extends State<PatientListView> {
   List<PatientModel> _patients = [];
-  List<PatientModel> _unsyncedPatients = [];
   bool _isLoading = true;
   String _searchQuery = "";
 
@@ -51,7 +50,6 @@ class _PatientListViewState extends State<PatientListView> {
 
         if (mounted) {
           setState(() {
-            _unsyncedPatients = unsynced;
             _patients = [...unsynced, ...remotePatients];
             _isLoading = false;
           });
@@ -60,7 +58,6 @@ class _PatientListViewState extends State<PatientListView> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _unsyncedPatients = unsynced;
           _patients = unsynced;
           _isLoading = false;
         });

@@ -8,6 +8,7 @@ export interface AuthUser {
   userType: string;
   participantId?: number;
   assignedTrack?: string;
+  assignedPlace?: string;
   permissions?: string[];
 }
 

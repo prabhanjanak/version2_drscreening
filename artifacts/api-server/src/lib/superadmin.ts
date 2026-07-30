@@ -98,6 +98,28 @@ export async function ensureSuperAdmin() {
         passwordHash,
         mustChangePassword: false,
       },
+      {
+        empId: "ASHA001",
+        name: "Sunitha (ASHA Worker)",
+        email: "asha.sunitha@sankaraeye.com",
+        mobile: "9845055551",
+        userType: "asha_worker",
+        assignedTrack: "Sankara Eye Hospital Shimoga",
+        assignedPlace: "PHC_SHIMOGA",
+        passwordHash,
+        mustChangePassword: false,
+      },
+      {
+        empId: "ASHA002",
+        name: "Lakshmi (ASHA Worker)",
+        email: "asha.lakshmi@sankaraeye.com",
+        mobile: "9845055552",
+        userType: "asha_worker",
+        assignedTrack: "Sankara Eye Hospital Shimoga",
+        assignedPlace: "PHC_CHANNAGIRI",
+        passwordHash,
+        mustChangePassword: false,
+      },
     ];
 
     for (const u of defaultUsers) {

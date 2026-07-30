@@ -7,8 +7,13 @@ class AppConstants {
   static const String tagline = "Serving Vision. Transforming Lives.";
   static const String sankaraAnniversary = "50 Years of Service (1977-2027) • 3 Million+ Free Surgeries";
 
-  // Default API Server URL (Change to IP address of server e.g. http://192.168.1.100:5000/api)
-  static const String defaultApiBaseUrl = "http://10.0.2.2:5000/api";
+  // USB development uses `adb reverse tcp:5000 tcp:5000`, which maps the
+  // phone's localhost:5000 directly to the API running on the development Mac.
+  // For a deployed app without USB, replace this with the hosted HTTPS API URL.
+  static const String defaultApiBaseUrl = String.fromEnvironment(
+    'API_URL',
+    defaultValue: "http://127.0.0.1:5000/api",
+  );
 
   // Brand Palette (Sankara Orange & Deep Navy)
   static const Color primaryOrange = Color(0xFFFF6B00);

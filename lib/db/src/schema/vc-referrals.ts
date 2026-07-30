@@ -12,8 +12,12 @@ export const vcReferralsTable = pgTable("vc_referrals", {
   gender: text("gender").notNull(),
   phone: text("phone").notNull(),
   address: text("address"),
-  visionCenterId: integer("vision_center_id").notNull().references(() => visionCentersTable.id),
+  visionCenterId: integer("vision_center_id").references(() => visionCentersTable.id),
   visionCenterCode: text("vision_center_code").notNull(),
+  referrerType: text("referrer_type").notNull().default("vision_center"), // vision_center | asha_worker
+  phcName: text("phc_name"), // Primary Health Center / Village Sub-Center name
+  randomBloodSugar: text("random_blood_sugar"), // RBS reading if recorded (e.g. 180 mg/dL)
+  symptoms: text("symptoms"), // Reported vision symptoms
   targetCampCode: text("target_camp_code").notNull(),
   referralDate: text("referral_date").notNull(), // YYYY-MM-DD
   drNotes: text("dr_notes"), // Clinical notes / tele-ophthalmology findings

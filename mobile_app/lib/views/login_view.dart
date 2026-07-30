@@ -4,7 +4,7 @@ import '../services/api_service.dart';
 import 'dashboard_view.dart';
 
 class LoginView extends StatefulWidget {
-  const LoginView({Key? key}) : super(key: key);
+  const LoginView({super.key});
 
   @override
   State<LoginView> createState() => _LoginViewState();
@@ -14,22 +14,9 @@ class _LoginViewState extends State<LoginView> {
   final _formKey = GlobalKey<FormState>();
   final _empIdController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _serverUrlController = TextEditingController();
-  
+
   bool _isLoading = false;
   bool _obscurePassword = true;
-  bool _showServerConfig = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadServerUrl();
-  }
-
-  Future<void> _loadServerUrl() async {
-    final url = await ApiService.getBaseUrl();
-    _serverUrlController.text = url;
-  }
 
   Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;
@@ -37,10 +24,6 @@ class _LoginViewState extends State<LoginView> {
     setState(() => _isLoading = true);
 
     try {
-      if (_showServerConfig && _serverUrlController.text.isNotEmpty) {
-        await ApiService.setBaseUrl(_serverUrlController.text.trim());
-      }
-
       final user = await ApiService.login(
         _empIdController.text.trim(),
         _passwordController.text.trim(),
@@ -65,6 +48,61 @@ class _LoginViewState extends State<LoginView> {
     }
   }
 
+  Future<void> _showAdminServerDialog() async {
+    final currentUrl = await ApiService.getBaseUrl();
+    final urlController = TextEditingController(text: currentUrl);
+
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Admin API Server Config"),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              "Set target backend URL (e.g., https://yourdomain.com/api):",
+              style: TextStyle(fontSize: 12),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: urlController,
+              decoration: const InputDecoration(
+                border: OutlineInputBorder(),
+                hintText: "https://domain.com/api",
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel"),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppConstants.primaryOrange),
+            onPressed: () async {
+              if (urlController.text.isNotEmpty) {
+                await ApiService.setBaseUrl(urlController.text.trim());
+                if (context.mounted) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text("API Server set to: ${urlController.text.trim()}"),
+                      backgroundColor: AppConstants.successGreen,
+                    ),
+                  );
+                }
+              }
+            },
+            child: const Text("Save URL", style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -79,19 +117,22 @@ class _LoginViewState extends State<LoginView> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Sankara Header Icon & Badge
-                  Container(
-                    width: 72,
-                    height: 72,
-                    decoration: BoxDecoration(
-                      color: AppConstants.primaryOrangeLight,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: AppConstants.primaryOrange, width: 2),
-                    ),
-                    child: const Icon(
-                      Icons.remove_red_eye_outlined,
-                      size: 38,
-                      color: AppConstants.primaryOrange,
+                  // Sankara Header Icon & Badge (Long press for Admin Server URL Config)
+                  GestureDetector(
+                    onLongPress: _showAdminServerDialog,
+                    child: Container(
+                      width: 72,
+                      height: 72,
+                      decoration: BoxDecoration(
+                        color: AppConstants.primaryOrangeLight,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: AppConstants.primaryOrange, width: 2),
+                      ),
+                      child: const Icon(
+                        Icons.remove_red_eye_outlined,
+                        size: 38,
+                        color: AppConstants.primaryOrange,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -221,31 +262,6 @@ class _LoginViewState extends State<LoginView> {
                       ],
                     ),
                   ),
-
-                  const SizedBox(height: 24),
-
-                  // Toggle Server Config Button
-                  TextButton.icon(
-                    onPressed: () => setState(() => _showServerConfig = !_showServerConfig),
-                    icon: const Icon(Icons.settings, size: 16, color: AppConstants.textMuted),
-                    label: Text(
-                      _showServerConfig ? "Hide Server URL Config" : "Configure API Server URL",
-                      style: const TextStyle(fontSize: 12, color: AppConstants.textMuted, fontWeight: FontWeight.w600),
-                    ),
-                  ),
-
-                  if (_showServerConfig) ...[
-                    const SizedBox(height: 8),
-                    TextFormField(
-                      controller: _serverUrlController,
-                      decoration: InputDecoration(
-                        labelText: "API Server URL",
-                        hintText: "http://<SERVER_IP>:5000/api",
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                      ),
-                    ),
-                  ],
                 ],
               ),
             ),

@@ -335,7 +335,12 @@ export default function DrsmsUsers() {
                       onChange={(e) => setRole(e.target.value)}
                       className="w-full text-xs border border-slate-300 p-2.5 rounded-lg bg-white"
                     >
-                      <option value="field_user">Field User</option>
+                      <option value="field_user">Field User / Screener</option>
+                      <option value="asha_worker">ASHA Worker</option>
+                      <option value="vision_center">Vision Center Officer</option>
+                      <option value="facility_manager">Facility Manager (Logistics)</option>
+                      <option value="admin_unit">Admin (Unit Level)</option>
+                      <option value="unit_head">Unit Head</option>
                       <option value="doctor">Doctor</option>
                       <option value="super_admin">Super Admin</option>
                     </select>

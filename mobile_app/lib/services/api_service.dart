@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../config/constants.dart';
@@ -13,15 +12,15 @@ class ApiService {
   static Future<String> getBaseUrl() async {
     final prefs = await SharedPreferences.getInstance();
     final saved = prefs.getString('api_base_url');
-    if (saved != null && saved.isNotEmpty) return saved;
-
-    if (kIsWeb) {
-      return "http://localhost:5000/api";
-    } else if (defaultTargetPlatform == TargetPlatform.android) {
-      return "http://10.0.2.2:5000/api";
-    } else {
-      return "http://localhost:5000/api";
+    if (saved != null && saved.isNotEmpty) {
+      if (saved.contains('10.0.2.2') || saved.contains('localhost')) {
+        await prefs.setString('api_base_url', AppConstants.defaultApiBaseUrl);
+        return AppConstants.defaultApiBaseUrl;
+      }
+      return saved;
     }
+
+    return AppConstants.defaultApiBaseUrl;
   }
 
   static Future<void> setBaseUrl(String url) async {

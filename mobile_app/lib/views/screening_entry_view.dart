@@ -563,7 +563,7 @@ class _ScreeningEntryViewState extends State<ScreeningEntryView> {
               color: isSelected ? activeColor : Colors.white,
               borderRadius: BorderRadius.circular(8),
               border: Border.all(color: isSelected ? activeColor : AppConstants.borderLight),
-              boxShadow: isSelected ? [BoxShadow(color: activeColor.withOpacity(0.3), blurRadius: 4)] : [],
+              boxShadow: isSelected ? [BoxShadow(color: activeColor.withValues(alpha: 0.3), blurRadius: 4)] : [],
             ),
             child: Text(
               opt,

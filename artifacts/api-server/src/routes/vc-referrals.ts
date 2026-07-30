@@ -8,7 +8,7 @@ const router = Router();
 // GET /api/vc-referrals
 router.get("/vc-referrals", requireAuth(), async (req, res) => {
   try {
-    const { targetCampCode, visionCenterCode, sankaraUnit, status } = req.query;
+    const { targetCampCode, visionCenterCode, sankaraUnit, status, referrerType } = req.query;
 
     let conditions = [];
     if (typeof targetCampCode === "string" && targetCampCode) {
@@ -20,6 +20,9 @@ router.get("/vc-referrals", requireAuth(), async (req, res) => {
     if (typeof status === "string" && status) {
       conditions.push(eq(vcReferralsTable.status, status));
     }
+    if (typeof referrerType === "string" && referrerType) {
+      conditions.push(eq(vcReferralsTable.referrerType, referrerType));
+    }
 
     // Filter by unit if requested or scoped
     if (typeof sankaraUnit === "string" && sankaraUnit) {
@@ -27,11 +30,9 @@ router.get("/vc-referrals", requireAuth(), async (req, res) => {
         .from(visionCentersTable)
         .where(eq(visionCentersTable.sankaraUnit, sankaraUnit));
       const vcCodes = unitVCs.map(v => v.shortCode);
-      if (vcCodes.length === 0) {
-        res.json([]);
-        return;
+      if (vcCodes.length > 0) {
+        conditions.push(inArray(vcReferralsTable.visionCenterCode, vcCodes));
       }
-      conditions.push(inArray(vcReferralsTable.visionCenterCode, vcCodes));
     }
 
     const referrals = await db.select({
@@ -44,6 +45,10 @@ router.get("/vc-referrals", requireAuth(), async (req, res) => {
       visionCenterId: vcReferralsTable.visionCenterId,
       visionCenterCode: vcReferralsTable.visionCenterCode,
       visionCenterName: visionCentersTable.name,
+      referrerType: vcReferralsTable.referrerType,
+      phcName: vcReferralsTable.phcName,
+      randomBloodSugar: vcReferralsTable.randomBloodSugar,
+      symptoms: vcReferralsTable.symptoms,
       targetCampCode: vcReferralsTable.targetCampCode,
       targetCampName: screeningPlacesTable.name,
       referralDate: vcReferralsTable.referralDate,
@@ -69,19 +74,25 @@ router.post("/vc-referrals", requireAuth(), async (req, res) => {
   try {
     const {
       patientName, age, gender, phone, address,
-      visionCenterCode, targetCampCode, referralDate, drNotes
+      visionCenterCode, targetCampCode, referralDate, drNotes,
+      referrerType, phcName, randomBloodSugar, symptoms
     } = req.body;
 
-    if (!patientName || !age || !gender || !phone || !visionCenterCode || !targetCampCode) {
-      res.status(400).json({ error: "Missing required referral fields (patientName, age, gender, phone, visionCenterCode, targetCampCode)" });
+    if (!patientName || !age || !gender || !phone || !targetCampCode) {
+      res.status(400).json({ error: "Missing required referral fields (patientName, age, gender, phone, targetCampCode)" });
       return;
     }
 
-    // Lookup vision center
-    const [vc] = await db.select().from(visionCentersTable).where(eq(visionCentersTable.shortCode, visionCenterCode));
-    if (!vc) {
-      res.status(400).json({ error: `Vision center code ${visionCenterCode} not found` });
-      return;
+    const effectiveReferrerType = referrerType || (req.user?.userType === "asha_worker" ? "asha_worker" : "vision_center");
+    const effectiveVcCode = visionCenterCode || req.user?.assignedPlace || "ASHA_WORKER";
+
+    // Lookup vision center if code provided
+    let vcId: number | null = null;
+    if (effectiveVcCode) {
+      const [vc] = await db.select().from(visionCentersTable).where(eq(visionCentersTable.shortCode, effectiveVcCode));
+      if (vc) {
+        vcId = vc.id;
+      }
     }
 
     const today = new Date().toISOString().split("T")[0];
@@ -92,8 +103,12 @@ router.post("/vc-referrals", requireAuth(), async (req, res) => {
       gender,
       phone,
       address: address || null,
-      visionCenterId: vc.id,
-      visionCenterCode: vc.shortCode,
+      visionCenterId: vcId,
+      visionCenterCode: effectiveVcCode,
+      referrerType: effectiveReferrerType,
+      phcName: phcName || null,
+      randomBloodSugar: randomBloodSugar || null,
+      symptoms: symptoms || null,
       targetCampCode,
       referralDate: referralDate || today,
       drNotes: drNotes || null,
@@ -103,7 +118,7 @@ router.post("/vc-referrals", requireAuth(), async (req, res) => {
 
     res.status(201).json(created);
   } catch (err: any) {
-    res.status(500).json({ error: "Failed to create VC referral: " + err.message });
+    res.status(500).json({ error: "Failed to create VC/ASHA referral: " + err.message });
   }
 });
 

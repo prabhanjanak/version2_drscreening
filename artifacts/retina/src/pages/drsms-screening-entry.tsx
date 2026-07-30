@@ -642,9 +642,9 @@ export default function DrsmsScreeningEntry() {
               fetchVcReferrals();
               setVcModalOpen(true);
             }}
-            className="bg-orange-50 hover:bg-orange-100 text-[#FF6B00] border border-orange-200 text-[10px] h-7 font-bold px-2.5 rounded-lg flex items-center gap-1 shadow-none"
+            className="bg-orange-50 hover:bg-orange-100 text-[#FF6B00] border border-orange-200 text-[10px] sm:text-xs h-8 font-bold px-3 rounded-lg flex items-center gap-1.5 shadow-none"
           >
-            <User className="h-3 w-3" /> Referrals from VCs
+            <User className="h-3.5 w-3.5" /> Referrals from VCs / ASHA Workers
           </Button>
 
           <Button
@@ -1090,14 +1090,14 @@ export default function DrsmsScreeningEntry() {
         </div>
       )}
 
-      {/* VC Referrals Picker Modal */}
+      {/* VC & ASHA Referrals Picker Modal */}
       {vcModalOpen && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
           <Card className="w-full max-w-xl bg-white rounded-xl shadow-xl border border-slate-200 overflow-hidden">
             <CardHeader className="flex flex-row justify-between items-center py-4 border-b border-slate-100 bg-orange-50/50">
               <div>
-                <CardTitle className="text-base font-bold text-slate-900">Referred Patients from Vision Centers (VCs)</CardTitle>
-                <CardDescription className="text-[11px]">Active Camp: {activeCampName} ({activeCampCode})</CardDescription>
+                <CardTitle className="text-base font-bold text-slate-900">Referred Patients (VCs & ASHA Workers)</CardTitle>
+                <CardDescription className="text-[11px]">Active DR Camp: {activeCampName} ({activeCampCode})</CardDescription>
               </div>
               <button onClick={() => setVcModalOpen(false)} className="text-slate-400 hover:text-slate-600">
                 <X className="h-5 w-5" />
@@ -1106,42 +1106,58 @@ export default function DrsmsScreeningEntry() {
 
             <CardContent className="p-4 max-h-[60vh] overflow-y-auto space-y-3">
               {loadingVcReferrals ? (
-                <div className="p-8 text-center text-xs text-slate-400">Loading referred patients from VCs...</div>
+                <div className="p-8 text-center text-xs text-slate-400">Loading referred patients...</div>
               ) : vcReferrals.length === 0 ? (
                 <div className="p-8 text-center text-xs text-slate-400 bg-slate-50 border border-dashed border-slate-200 rounded-xl">
-                  No pending patient referrals found from Vision Centers for camp {activeCampCode}.
+                  No pending patient referrals found for camp {activeCampCode}.
                 </div>
               ) : (
-                vcReferrals.map((item) => (
-                  <div key={item.id} className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl hover:border-[#FF6B00] transition-all flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-extrabold text-sm text-slate-900">{item.patientName}</span>
-                        <span className="text-[10px] bg-blue-100 text-blue-700 font-bold px-2 py-0.5 rounded-full">
-                          {item.age} yrs • {item.gender}
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-slate-600 font-medium">
-                        📞 {item.phone} {item.address ? `• 📍 ${item.address}` : ""}
-                      </p>
-                      <p className="text-[10px] text-slate-500 font-semibold">
-                        Source VC: <strong className="text-slate-800">{item.visionCenterName || item.visionCenterCode}</strong> ({item.referralDate})
-                      </p>
-                      {item.drNotes && (
-                        <p className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 p-1.5 rounded mt-1 font-mono">
-                          Notes: {item.drNotes}
-                        </p>
-                      )}
-                    </div>
+                vcReferrals.map((item) => {
+                  const isAsha = item.referrerType === "asha_worker";
+                  return (
+                    <div key={item.id} className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl hover:border-[#FF6B00] transition-all flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-extrabold text-sm text-slate-900">{item.patientName}</span>
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                            isAsha ? "bg-rose-100 text-rose-800" : "bg-blue-100 text-blue-800"
+                          }`}>
+                            {isAsha ? "ASHA Worker" : "Vision Center"}
+                          </span>
+                          <span className="text-[10px] bg-slate-200 text-slate-700 font-bold px-2 py-0.5 rounded-full">
+                            {item.age} yrs • {item.gender}
+                          </span>
+                        </div>
 
-                    <Button
-                      onClick={() => handleApplyReferral(item)}
-                      className="bg-gradient-to-r from-orange-500 to-[#FF6B00] hover:from-[#FF6B00] hover:to-orange-600 text-white text-xs font-bold px-3.5 h-8 rounded-lg shrink-0 shadow-xs"
-                    >
-                      Fill Screening Form
-                    </Button>
-                  </div>
-                ))
+                        <p className="text-[11px] text-slate-600 font-medium">
+                          📞 {item.phone} {item.address ? `• 📍 ${item.address}` : ""}
+                        </p>
+
+                        <div className="flex flex-wrap gap-2 text-[10px] text-slate-500 font-semibold">
+                          <span>Source: <strong className="text-slate-800">{isAsha ? item.phcName || "ASHA Worker" : item.visionCenterName || item.visionCenterCode}</strong> ({item.referralDate})</span>
+                          {item.randomBloodSugar && (
+                            <span className="text-indigo-700 font-bold bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-100">
+                              RBS: {item.randomBloodSugar} mg/dL
+                            </span>
+                          )}
+                        </div>
+
+                        {item.drNotes && (
+                          <p className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 p-1.5 rounded mt-1 font-mono">
+                            Notes: {item.drNotes}
+                          </p>
+                        )}
+                      </div>
+
+                      <Button
+                        onClick={() => handleApplyReferral(item)}
+                        className="bg-gradient-to-r from-orange-500 to-[#FF6B00] hover:from-[#FF6B00] hover:to-orange-600 text-white text-xs font-bold px-3.5 h-8 rounded-lg shrink-0 shadow-xs"
+                      >
+                        Fill Screening Form
+                      </Button>
+                    </div>
+                  );
+                })
               )}
             </CardContent>
 

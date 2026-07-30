@@ -1,7 +1,7 @@
 {
-  "name": "Vision 2020",
-  "short_name": "Vision2020",
-  "description": "Vision 2020 Annual Conference Portal",
+  "name": "Netrartha",
+  "short_name": "Netrartha",
+  "description": "Diabetic Retinopathy Screening Management System",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",

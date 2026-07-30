@@ -71,7 +71,7 @@ class _FacilityScheduleViewState extends State<FacilityScheduleView> {
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                               decoration: BoxDecoration(
-                                color: camp.status == 'completed' ? Colors.green.withOpacity(0.1) : Colors.red.withOpacity(0.1),
+                                color: camp.status == 'completed' ? Colors.green.withValues(alpha: 0.1) : Colors.red.withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(4),
                               ),
                               child: Text(
@@ -99,9 +99,9 @@ class _FacilityScheduleViewState extends State<FacilityScheduleView> {
                         Container(
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
-                            color: Colors.amber.withOpacity(0.05),
+                            color: Colors.amber.withValues(alpha: 0.05),
                             borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: Colors.amber.withOpacity(0.4)),
+                            border: Border.all(color: Colors.amber.withValues(alpha: 0.4)),
                           ),
                           child: const Row(
                             children: [

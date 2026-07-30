@@ -1,0 +1,15 @@
+node_modules
+.git
+.gitignore
+.env
+.DS_Store
+*.log
+artifacts/api-server/dist
+artifacts/retina/dist
+uploads
+mobile_app
+Session_List_Template.xlsx
+netrartha_prod_db.sql
+db_updates.sql
+sefi-vision2020.zip
+corrected_code.zip
