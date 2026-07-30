@@ -72,6 +72,28 @@ const QUALITY_OPTIONS = ["Good", "Blur", "Ungradable"];
 export default function DrsmsScreeningEntry() {
   const { user } = useAuth();
   const { toast } = useToast();
+
+  if ((user?.userType as string) === "asha_worker") {
+    return (
+      <div className="flex-1 p-6 flex items-center justify-center bg-slate-50/50">
+        <Card className="max-w-md w-full bg-white rounded-xl shadow-md border border-slate-200 p-6 text-center space-y-4">
+          <div className="h-12 w-12 bg-rose-50 text-rose-600 rounded-full flex items-center justify-center mx-auto">
+            <Heart className="h-6 w-6" />
+          </div>
+          <div>
+            <h2 className="text-lg font-bold text-slate-800">ASHA Worker Data Collection Portal</h2>
+            <p className="text-xs text-slate-500 mt-1">
+              ASHA Workers collect door-to-door patient referral data. Full clinical eye screening forms are filled at the DR Camp by attending doctors and field screeners.
+            </p>
+          </div>
+          <Button asChild className="w-full bg-gradient-to-r from-orange-500 to-[#FF6B00] text-white text-xs font-bold h-10 rounded-xl">
+            <a href="/asha-referrals">Go to ASHA Patient Referrals</a>
+          </Button>
+        </Card>
+      </div>
+    );
+  }
+
   const [places, setPlaces] = useState<any[]>([]);
   const [loadingPlaces, setLoadingPlaces] = useState(true);
   const [activeCampCode, setActiveCampCode] = useState<string | null>(localStorage.getItem("activeCampCode"));

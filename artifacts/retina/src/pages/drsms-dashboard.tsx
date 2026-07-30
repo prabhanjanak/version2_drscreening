@@ -261,9 +261,15 @@ export default function DrsmsDashboard() {
             <RefreshCw className="h-4 w-4" />
           </Button>
 
-          <Link href="/patients/new" className="px-4 py-2 bg-gradient-to-r from-orange-500 to-[#FF6B00] hover:from-[#FF6B00] hover:to-orange-600 text-white rounded-xl text-xs font-bold shadow-sm flex items-center gap-1.5">
-            + New Screening
-          </Link>
+          {(user?.userType as string) === "asha_worker" ? (
+            <Link href="/asha-referrals" className="px-4 py-2 bg-gradient-to-r from-orange-500 to-[#FF6B00] hover:from-[#FF6B00] hover:to-orange-600 text-white rounded-xl text-xs font-bold shadow-sm flex items-center gap-1.5">
+              <Heart className="h-4 w-4" /> + New ASHA Patient Referral
+            </Link>
+          ) : (
+            <Link href="/patients/new" className="px-4 py-2 bg-gradient-to-r from-orange-500 to-[#FF6B00] hover:from-[#FF6B00] hover:to-orange-600 text-white rounded-xl text-xs font-bold shadow-sm flex items-center gap-1.5">
+              + New Screening
+            </Link>
+          )}
         </div>
       </div>
 
