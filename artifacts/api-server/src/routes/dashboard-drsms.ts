@@ -5,7 +5,7 @@ import { requireAuth } from "../middlewares/requireAuth";
 
 const router = Router();
 
-router.get("/dashboard/drsms", requireAuth(["admin", "super_admin", "doctor", "field_user", "admin_unit", "unit_head", "facility_manager", "vision_center"]), async (req, res) => {
+router.get("/dashboard/drsms", requireAuth(["admin", "super_admin", "doctor", "field_user", "admin_unit", "unit_head", "facility_manager", "vision_center", "asha_worker"]), async (req, res) => {
   try {
     const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
     const currentMonth = today.slice(0, 7); // YYYY-MM
@@ -24,8 +24,8 @@ router.get("/dashboard/drsms", requireAuth(["admin", "super_admin", "doctor", "f
       } else {
         placeCodes = [];
       }
-    } else if (user.userType === "field_user" || user.userType === "vision_center") {
-      // Scoped to the field user's assigned place if set
+    } else if (user.userType === "field_user" || user.userType === "vision_center" || user.userType === "asha_worker") {
+      // Scoped to the user's assigned place if set
       const [dbUser] = await db
         .select({ assignedPlace: systemUsersTable.assignedPlace })
         .from(systemUsersTable)
