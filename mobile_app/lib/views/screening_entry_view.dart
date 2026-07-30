@@ -312,6 +312,9 @@ class _ScreeningEntryViewState extends State<ScreeningEntryView> {
 
                     TextFormField(
                       controller: _nameController,
+                      keyboardType: TextInputType.name,
+                      textCapitalization: TextCapitalization.words,
+                      textInputAction: TextInputAction.next,
                       decoration: _buildInputDecoration("Patient Full Name *", Icons.person),
                       validator: (val) => val == null || val.isEmpty ? "Required" : null,
                     ),
@@ -324,6 +327,7 @@ class _ScreeningEntryViewState extends State<ScreeningEntryView> {
                           child: TextFormField(
                             controller: _ageController,
                             keyboardType: TextInputType.number,
+                            textInputAction: TextInputAction.next,
                             decoration: _buildInputDecoration("Age *", Icons.cake),
                             validator: (val) => val == null || val.isEmpty ? "Required" : null,
                           ),
@@ -333,6 +337,7 @@ class _ScreeningEntryViewState extends State<ScreeningEntryView> {
                           child: TextFormField(
                             controller: _phoneController,
                             keyboardType: TextInputType.phone,
+                            textInputAction: TextInputAction.next,
                             maxLength: 10,
                             decoration: _buildInputDecoration("Phone Number *", Icons.phone).copyWith(counterText: ""),
                             validator: (val) => val == null || val.length != 10 ? "10 Digits" : null,
@@ -345,6 +350,9 @@ class _ScreeningEntryViewState extends State<ScreeningEntryView> {
 
                     TextFormField(
                       controller: _addressController,
+                      keyboardType: TextInputType.streetAddress,
+                      textCapitalization: TextCapitalization.words,
+                      textInputAction: TextInputAction.next,
                       decoration: _buildInputDecoration("Address / Village *", Icons.location_on),
                       validator: (val) => val == null || val.isEmpty ? "Required" : null,
                     ),
@@ -382,6 +390,7 @@ class _ScreeningEntryViewState extends State<ScreeningEntryView> {
                           child: TextFormField(
                             controller: _systolicBpController,
                             keyboardType: TextInputType.number,
+                            textInputAction: TextInputAction.next,
                             decoration: _buildInputDecoration("Systolic (120)", Icons.favorite),
                           ),
                         ),
@@ -393,6 +402,7 @@ class _ScreeningEntryViewState extends State<ScreeningEntryView> {
                           child: TextFormField(
                             controller: _diastolicBpController,
                             keyboardType: TextInputType.number,
+                            textInputAction: TextInputAction.done,
                             decoration: _buildInputDecoration("Diastolic (80)", Icons.favorite_border),
                           ),
                         ),

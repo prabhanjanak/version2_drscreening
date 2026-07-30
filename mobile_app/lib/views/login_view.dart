@@ -68,6 +68,10 @@ class _LoginViewState extends State<LoginView> {
             const SizedBox(height: 12),
             TextField(
               controller: urlController,
+              keyboardType: TextInputType.url,
+              autocorrect: false,
+              enableSuggestions: false,
+              textInputAction: TextInputAction.done,
               decoration: const InputDecoration(
                 border: OutlineInputBorder(),
                 hintText: "https://domain.com/api",
@@ -202,6 +206,9 @@ class _LoginViewState extends State<LoginView> {
                         TextFormField(
                           controller: _empIdController,
                           keyboardType: TextInputType.text,
+                          autocorrect: false,
+                          enableSuggestions: false,
+                          textInputAction: TextInputAction.next,
                           decoration: InputDecoration(
                             labelText: "Employee ID",
                             hintText: "e.g. 006704 or 000338",
@@ -220,6 +227,11 @@ class _LoginViewState extends State<LoginView> {
                         TextFormField(
                           controller: _passwordController,
                           obscureText: _obscurePassword,
+                          keyboardType: TextInputType.visiblePassword,
+                          autocorrect: false,
+                          enableSuggestions: false,
+                          textInputAction: TextInputAction.done,
+                          onFieldSubmitted: (_) => _handleLogin(),
                           decoration: InputDecoration(
                             labelText: "Password",
                             hintText: "Enter password",

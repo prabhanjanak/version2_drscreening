@@ -88,6 +88,8 @@ class _PatientListViewState extends State<PatientListView> {
             padding: const EdgeInsets.all(12.0),
             child: TextField(
               onChanged: (val) => setState(() => _searchQuery = val),
+              keyboardType: TextInputType.text,
+              textInputAction: TextInputAction.search,
               decoration: InputDecoration(
                 hintText: "Search by patient name, unique ID, phone...",
                 prefixIcon: const Icon(Icons.search, color: AppConstants.primaryOrange),
