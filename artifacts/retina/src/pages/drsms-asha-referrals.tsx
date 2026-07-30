@@ -164,10 +164,10 @@ export default function DrsmsAshaReferrals() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl font-black tracking-tight text-slate-900 flex items-center gap-2">
-            <Heart className="h-6 w-6 text-[#FF6B00]" /> ASHA Patient Screening Portal
+            <Heart className="h-6 w-6 text-[#FF6B00]" /> Patient Referral Portal
           </h1>
           <p className="text-xs text-slate-500 font-medium">
-            Collect door-to-door DR screening metrics & refer high-risk diabetic patients to DR camps.
+            Door-to-door & PHC field patient referrals for diabetic retinopathy screening camps.
           </p>
         </div>
 

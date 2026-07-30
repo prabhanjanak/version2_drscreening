@@ -73,9 +73,9 @@ export function AppLayout({ children }: LayoutProps) {
       items.push({ label: "Vision Centers", href: "/vision-centers", icon: Building2 });
     }
 
-    // ASHA Worker Referral & Data Collection Portal
-    if (type === "super_admin" || type === "admin" || type === "admin_unit" || type === "unit_head" || type === "asha_worker" || type === "outreach") {
-      items.push({ label: "ASHA Data Collection", href: "/asha-referrals", icon: Heart });
+    // Patient Referral Portal (ASHA Workers, Vision Centers, Outreach & Management)
+    if (type === "super_admin" || type === "admin" || type === "admin_unit" || type === "unit_head" || type === "asha_worker" || type === "outreach" || type === "vision_center") {
+      items.push({ label: "Patient Referral", href: "/asha-referrals", icon: Heart });
     }
 
     if (type === "super_admin" || type === "admin" || type === "admin_unit" || type === "facility_manager") {
