@@ -3,10 +3,10 @@ import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import bannerLogoImg from "@assets/sankara_eye_icon.png";
-import campBgImg from "@assets/village_eye_camp_bg.png";
+import screeningPhotoImg from "@assets/patient_eye_screening.png";
 import { 
   Eye, EyeOff, Loader2, Lock, User, ShieldCheck, 
-  Award, ArrowRight, Key, Heart, Building2, UserCheck
+  Award, ArrowRight, Heart, Camera, CheckCircle2
 } from "lucide-react";
 import { animate } from "animejs";
 
@@ -19,7 +19,6 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [activeRole, setActiveRole] = useState<string | null>(null);
 
   const cardRef = useRef<HTMLDivElement>(null);
 
@@ -89,38 +88,27 @@ export default function Login() {
     }
   };
 
-  // Quick test credential filler
-  const handleQuickFill = (empId: string, roleName: string, defaultPwd = "Sankara@123") => {
-    setUsername(empId);
-    setPassword(defaultPwd);
-    setActiveRole(roleName);
-    toast({
-      title: `${roleName} Loaded! 🔑`,
-      description: `User ID set to '${empId}'. Click 'Sign In' to log in.`
-    });
-  };
-
   return (
     <div className="relative min-h-screen w-screen bg-slate-900 flex flex-col justify-between overflow-x-hidden font-sans select-none">
       
-      {/* 1. REALISTIC VILLAGE EYE CAMP BACKGROUND IMAGE WITH WHITE FADING GRADIENT */}
+      {/* 1. REALISTIC PATIENT EYE SCREENING BACKGROUND IMAGE */}
       <div className="absolute inset-0 z-0">
         <img
-          src={campBgImg}
-          alt="Sankara Eye Foundation Community Outreach Camp"
-          className="w-full h-full object-cover object-left-top scale-[1.02]"
+          src={screeningPhotoImg}
+          alt="Indian doctor conducting eye screening on elderly village patient"
+          className="w-full h-full object-cover object-[30%_35%] scale-[1.02]"
         />
-        {/* Soft white fading gradient overlay across the right half for clean legibility */}
-        <div className="absolute inset-0 bg-gradient-to-r from-slate-950/70 via-slate-900/50 to-white/95 sm:to-white/95 lg:from-slate-950/50 lg:via-white/80 lg:to-white" />
+        {/* Soft white fading gradient overlay across the right half for high readability */}
+        <div className="absolute inset-0 bg-gradient-to-r from-slate-950/70 via-slate-900/50 to-white/95 sm:to-white/95 lg:from-slate-950/40 lg:via-white/75 lg:to-white" />
         <div className="absolute inset-0 bg-gradient-to-t from-white via-transparent to-black/30 lg:hidden" />
       </div>
 
-      {/* 2. MAIN 2-COLUMN LUXURY CONTENT */}
+      {/* 2. MAIN 2-COLUMN CONTENT */}
       <main className="relative z-10 flex-1 w-full max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8 flex items-center justify-center">
         <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
           
-          {/* LEFT COLUMN: BRANDING & 50 YEARS GOLDEN JUBILEE BADGE */}
-          <div className="lg:col-span-6 flex flex-col justify-center space-y-6 text-white drop-shadow-md">
+          {/* LEFT COLUMN: BRANDING & FEATURED PATIENT SCREENING CARD */}
+          <div className="lg:col-span-6 flex flex-col justify-center space-y-5 text-white drop-shadow-md">
             
             {/* Header Brand Bar */}
             <div className="inline-flex items-center gap-3 bg-white/95 backdrop-blur-md px-5 py-3 rounded-2xl border border-white/20 shadow-xl max-w-fit">
@@ -132,7 +120,7 @@ export default function Login() {
             </div>
 
             {/* Title & Tagline */}
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <div className="flex items-center gap-3">
                 <h1 
                   className="text-4xl sm:text-5xl font-black text-white lg:text-slate-900 tracking-tight drop-shadow-md lg:drop-shadow-none"
@@ -152,21 +140,43 @@ export default function Login() {
               </p>
             </div>
 
+            {/* Featured Patient Screening Photo Card */}
+            <div className="relative rounded-2xl overflow-hidden border border-white/30 bg-slate-950/80 backdrop-blur-md p-2 shadow-2xl max-w-lg group">
+              <img
+                src={screeningPhotoImg}
+                alt="Doctor screening village patient eye with camera"
+                className="w-full h-48 sm:h-56 object-cover object-[25%_35%] rounded-xl transition-transform duration-700 group-hover:scale-[1.02]"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent opacity-85" />
+              
+              <div className="absolute bottom-3 left-4 right-4 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="h-2.5 w-2.5 rounded-full bg-emerald-400 animate-pulse" />
+                  <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                    <Camera className="h-3.5 w-3.5 text-[#FF6B00]" /> Village Eye Screening Camp — Sankara Outreach
+                  </span>
+                </div>
+                <span className="text-[10px] font-bold text-amber-300 bg-amber-400/20 px-2 py-0.5 rounded border border-amber-300/30">
+                  DR Tele-Ophthalmology
+                </span>
+              </div>
+            </div>
+
             {/* 50 Years Golden Jubilee Banner */}
-            <div className="bg-slate-950/85 backdrop-blur-md rounded-2xl p-4 border border-amber-400/30 flex items-center gap-4 shadow-xl max-w-lg">
+            <div className="bg-slate-950/85 backdrop-blur-md rounded-2xl p-3.5 border border-amber-400/30 flex items-center gap-3.5 shadow-xl max-w-lg">
               <img
                 src="/sankara-50th-logo.png"
                 alt="Sankara 50th Golden Jubilee"
-                className="h-12 sm:h-14 w-auto object-contain filter drop-shadow-[0_0_8px_rgba(251,191,36,0.3)] shrink-0"
+                className="h-11 sm:h-13 w-auto object-contain filter drop-shadow-[0_0_8px_rgba(251,191,36,0.3)] shrink-0"
               />
               <div className="space-y-0.5">
                 <div className="flex items-center gap-1.5 text-[#FFD700] text-[10px] font-black tracking-widest uppercase">
                   <Award className="h-3.5 w-3.5" /> 50 Years of Service (1977 - 2027)
                 </div>
-                <p className="text-sm font-bold text-white">
-                  3 Million+ <span className="text-[#FF6B00]">Free Eye Surgeries</span>
+                <p className="text-xs sm:text-sm font-bold text-white">
+                  3 Million+ <span className="text-[#FF6B00]">Free Eye Surgeries Completed</span>
                 </p>
-                <p className="text-[11px] text-slate-300 font-medium">
+                <p className="text-[10px] text-slate-300 font-medium">
                   Reaching Underserved Rural & Tribal Communities Across India
                 </p>
               </div>
@@ -174,7 +184,7 @@ export default function Login() {
 
           </div>
 
-          {/* RIGHT COLUMN: LOGIN FORM & TEST LOGINS PANEL */}
+          {/* RIGHT COLUMN: LOGIN FORM CARD */}
           <div ref={cardRef} className="lg:col-span-6 flex justify-center lg:justify-end">
             <div className="w-full max-w-md bg-white rounded-3xl shadow-[0_25px_60px_rgba(0,0,0,0.25)] border border-slate-200 overflow-hidden text-slate-900">
               
@@ -208,7 +218,7 @@ export default function Login() {
                         required
                         value={username}
                         onChange={(e) => setUsername(e.target.value)}
-                        placeholder="e.g. 010177, ASHA001, VC001"
+                        placeholder="Enter employee ID (e.g., 010177)"
                         className="w-full h-11 pl-10 pr-4 bg-slate-50 border border-slate-300 rounded-xl text-xs sm:text-sm font-semibold text-slate-900 placeholder-slate-400 focus:bg-white focus:border-[#FF6B00] focus:ring-2 focus:ring-[#FF6B00]/20 outline-none transition-all"
                       />
                     </div>
