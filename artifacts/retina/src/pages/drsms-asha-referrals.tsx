@@ -101,8 +101,8 @@ export default function DrsmsAshaReferrals() {
 
   const handleSubmitReferral = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!patientName || !age || !phone || !targetCampCode) {
-      toast({ title: "Validation Error", description: "Please complete patient name, age, phone, and target DR camp.", variant: "destructive" });
+    if (!patientName || !age || !targetCampCode) {
+      toast({ title: "Validation Error", description: "Please enter patient name, age, and select target DR camp.", variant: "destructive" });
       return;
     }
 
@@ -115,8 +115,8 @@ export default function DrsmsAshaReferrals() {
           patientName,
           age: parseInt(age, 10),
           gender,
-          phone: phone.trim(),
-          address: address || null,
+          phone: phone.trim() || "N/A",
+          address: address || "Shimoga",
           referrerType: "asha_worker",
           phcName: phcName || null,
           randomBloodSugar: randomBloodSugar || null,
@@ -351,7 +351,7 @@ export default function DrsmsAshaReferrals() {
             <form onSubmit={handleSubmitReferral}>
               <CardContent className="p-4 md:p-6 space-y-4 text-xs max-h-[75vh] overflow-y-auto">
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Patient Full Name *</label>
+                  <label className="block font-bold text-slate-700 mb-1">1. Patient Full Name *</label>
                   <input
                     type="text"
                     required
@@ -364,23 +364,23 @@ export default function DrsmsAshaReferrals() {
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block font-bold text-slate-700 mb-1">Age (Years) *</label>
+                    <label className="block font-bold text-slate-700 mb-1">2. Age (Years) *</label>
                     <input
                       type="number"
                       required
                       value={age}
                       onChange={(e) => setAge(e.target.value)}
                       placeholder="e.g. 52"
-                      className="w-full text-xs border border-slate-300 p-2.5 rounded-lg focus:ring-2 focus:ring-[#FF6B00] outline-none"
+                      className="w-full text-xs border border-slate-300 p-2.5 rounded-lg focus:ring-2 focus:ring-[#FF6B00] outline-none font-bold"
                     />
                   </div>
 
                   <div>
-                    <label className="block font-bold text-slate-700 mb-1">Gender *</label>
+                    <label className="block font-bold text-slate-700 mb-1">3. Gender *</label>
                     <select
                       value={gender}
                       onChange={(e) => setGender(e.target.value)}
-                      className="w-full text-xs border border-slate-300 p-2.5 rounded-lg bg-white"
+                      className="w-full text-xs border border-slate-300 p-2.5 rounded-lg bg-white font-semibold text-slate-800"
                     >
                       <option value="Male">Male</option>
                       <option value="Female">Female</option>
@@ -389,92 +389,54 @@ export default function DrsmsAshaReferrals() {
                   </div>
                 </div>
 
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">Mobile Number *</label>
-                  <input
-                    type="tel"
-                    required
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    placeholder="10 digit contact number"
-                    className="w-full text-xs border border-slate-300 p-2.5 rounded-lg focus:ring-2 focus:ring-[#FF6B00] outline-none"
-                  />
-                </div>
-
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block font-bold text-slate-700 mb-1">Village / Address *</label>
-                    <input
-                      type="text"
-                      required
+                    <label className="block font-bold text-slate-700 mb-1">4. Village / District (Select or Type) *</label>
+                    <select
                       value={address}
                       onChange={(e) => setAddress(e.target.value)}
-                      placeholder="Village or street name"
-                      className="w-full text-xs border border-slate-300 p-2.5 rounded-lg focus:ring-2 focus:ring-[#FF6B00] outline-none"
-                    />
+                      className="w-full text-xs border border-slate-300 p-2.5 rounded-lg bg-white font-semibold text-slate-800"
+                    >
+                      <option value="Shimoga">Shimoga District</option>
+                      <option value="Bhadravathi">Bhadravathi</option>
+                      <option value="Davanagere">Davanagere District</option>
+                      <option value="Channagiri">Channagiri</option>
+                      <option value="Honnali">Honnali</option>
+                      <option value="Harihara">Harihara</option>
+                      <option value="Chitradurga">Chitradurga District</option>
+                      <option value="Haveri">Haveri District</option>
+                      <option value="Tarikere">Tarikere</option>
+                      <option value="Kadur">Kadur</option>
+                      <option value="Other Village">Other Village / Area</option>
+                    </select>
                   </div>
 
                   <div>
-                    <label className="block font-bold text-slate-700 mb-1">PHC / Sub-Center Name</label>
+                    <label className="block font-bold text-slate-700 mb-1">Mobile Phone (Optional)</label>
                     <input
-                      type="text"
-                      value={phcName}
-                      onChange={(e) => setPhcName(e.target.value)}
-                      placeholder="e.g. Shimoga Rural PHC"
-                      className="w-full text-xs border border-slate-300 p-2.5 rounded-lg focus:ring-2 focus:ring-[#FF6B00] outline-none"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block font-bold text-slate-700 mb-1">Random Blood Sugar (mg/dL)</label>
-                    <input
-                      type="text"
-                      value={randomBloodSugar}
-                      onChange={(e) => setRandomBloodSugar(e.target.value)}
-                      placeholder="e.g. 180"
-                      className="w-full text-xs border border-slate-300 p-2.5 rounded-lg focus:ring-2 focus:ring-[#FF6B00] outline-none"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block font-bold text-slate-700 mb-1">Reported Eye Symptoms</label>
-                    <input
-                      type="text"
-                      value={symptoms}
-                      onChange={(e) => setSymptoms(e.target.value)}
-                      placeholder="e.g. Blurred vision, floaters"
+                      type="tel"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      placeholder="e.g. 9845012345"
                       className="w-full text-xs border border-slate-300 p-2.5 rounded-lg focus:ring-2 focus:ring-[#FF6B00] outline-none"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Target DR Screening Camp *</label>
+                  <label className="block font-bold text-slate-700 mb-1">5. Target DR Screening Camp (Select Camp) *</label>
                   <select
                     required
                     value={targetCampCode}
                     onChange={(e) => setTargetCampCode(e.target.value)}
-                    className="w-full text-xs border border-slate-300 p-2.5 rounded-lg bg-white font-bold text-slate-800"
+                    className="w-full text-xs border border-slate-300 p-2.5 rounded-lg bg-white font-extrabold text-slate-900 border-orange-200 focus:ring-2 focus:ring-[#FF6B00]"
                   >
                     {camps.map(c => (
                       <option key={c.shortCode} value={c.shortCode}>
-                        {c.name} ({c.shortCode}) - {c.district}
+                        🏥 {c.name} ({c.shortCode}) — {c.district}
                       </option>
                     ))}
                   </select>
-                </div>
-
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">Additional Field / Clinical Notes</label>
-                  <textarea
-                    rows={2}
-                    value={drNotes}
-                    onChange={(e) => setDrNotes(e.target.value)}
-                    placeholder="e.g. Patient has 5 year history of diabetes. Needs fundus evaluation."
-                    className="w-full text-xs border border-slate-300 p-2.5 rounded-lg focus:ring-2 focus:ring-[#FF6B00] outline-none"
-                  />
                 </div>
               </CardContent>
 
