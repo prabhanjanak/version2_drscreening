@@ -142,4 +142,30 @@ router.patch("/vc-referrals/:id/convert", requireAuth(), async (req, res) => {
   }
 });
 
+// PATCH /api/vc-referrals/:id/status (for No-Show / Follow-Up / Reschedule)
+router.patch("/vc-referrals/:id/status", requireAuth(), async (req, res) => {
+  try {
+    const id = parseInt(req.params["id"] as string, 10);
+    const { status, targetCampCode, drNotes } = req.body;
+
+    if (!status) {
+      res.status(400).json({ error: "Status is required" });
+      return;
+    }
+
+    let updateData: Record<string, any> = { status };
+    if (targetCampCode) updateData['targetCampCode'] = targetCampCode;
+    if (drNotes !== undefined) updateData['drNotes'] = drNotes;
+
+    const [updated] = await db.update(vcReferralsTable)
+      .set(updateData)
+      .where(eq(vcReferralsTable.id, id))
+      .returning();
+
+    res.json(updated);
+  } catch (err: any) {
+    res.status(500).json({ error: "Failed to update referral status: " + err.message });
+  }
+});
+
 export default router;

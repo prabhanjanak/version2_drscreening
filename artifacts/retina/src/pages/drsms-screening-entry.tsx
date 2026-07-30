@@ -147,6 +147,27 @@ export default function DrsmsScreeningEntry() {
     setVcModalOpen(false);
   };
 
+  const handleMarkNoShow = async (refItem: any) => {
+    try {
+      const token = localStorage.getItem("vision2020_token");
+      const res = await fetch(`/api/vc-referrals/${refItem.id}/status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ status: "follow_up_required" }),
+      });
+
+      if (res.ok) {
+        toast({
+          title: "Moved to Follow-Up List 📋",
+          description: `Marked ${refItem.patientName} as No-Show. Added to Follow-Up panel.`,
+        });
+        if (activeCampCode) fetchVcReferrals();
+      }
+    } catch (err) {
+      toast({ title: "Error", description: "Failed to update referral status", variant: "destructive" });
+    }
+  };
+
   const { register, handleSubmit, watch, setValue, reset, formState: { errors } } = useForm<FormValues>({
     resolver: zodResolver(screeningFormSchema),
     defaultValues: {
@@ -1171,12 +1192,21 @@ export default function DrsmsScreeningEntry() {
                         )}
                       </div>
 
-                      <Button
-                        onClick={() => handleApplyReferral(item)}
-                        className="bg-gradient-to-r from-orange-500 to-[#FF6B00] hover:from-[#FF6B00] hover:to-orange-600 text-white text-xs font-bold px-3.5 h-8 rounded-lg shrink-0 shadow-xs"
-                      >
-                        Fill Screening Form
-                      </Button>
+                      <div className="flex flex-wrap items-center gap-1.5 shrink-0">
+                        <Button
+                          onClick={() => handleApplyReferral(item)}
+                          className="bg-gradient-to-r from-orange-500 to-[#FF6B00] hover:from-[#FF6B00] hover:to-orange-600 text-white text-xs font-bold px-3 h-8 rounded-lg shadow-xs"
+                        >
+                          Fill Screening Form
+                        </Button>
+                        <Button
+                          onClick={() => handleMarkNoShow(item)}
+                          variant="outline"
+                          className="border-amber-300 text-amber-800 hover:bg-amber-50 text-xs font-bold px-2.5 h-8 rounded-lg"
+                        >
+                          Did Not Attend
+                        </Button>
+                      </div>
                     </div>
                   );
                 })

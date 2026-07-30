@@ -5,7 +5,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { 
   LogOut, LayoutDashboard, Users, MapPin, 
   Settings, ShieldAlert, FileText, Camera,
-  Activity, Menu, X, WifiOff, User, Building2, Truck, Smartphone, MoreHorizontal, ChevronRight, Heart
+  Activity, Menu, X, WifiOff, User, Building2, Truck, Smartphone, MoreHorizontal, ChevronRight, Heart, PhoneCall
 } from "lucide-react";
 import sankaraTextBanner from "@assets/sankara_eye_icon.png"; /* SANKARA EYE FOUNDATION - INDIA text banner */
 import { UserProfileDialog } from "./user-profile-dialog";
@@ -76,6 +76,7 @@ export function AppLayout({ children }: LayoutProps) {
     // Patient Referral Portal (ASHA Workers, Vision Centers, Outreach & Management)
     if (type === "super_admin" || type === "admin" || type === "admin_unit" || type === "unit_head" || type === "asha_worker" || type === "outreach" || type === "vision_center") {
       items.push({ label: "Patient Referral", href: "/asha-referrals", icon: Heart });
+      items.push({ label: "Follow Up", href: "/follow-up", icon: PhoneCall });
     }
 
     if (type === "super_admin" || type === "admin" || type === "admin_unit" || type === "facility_manager") {
