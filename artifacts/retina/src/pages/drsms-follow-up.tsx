@@ -67,8 +67,9 @@ export default function DrsmsFollowUp() {
 
   const fetchCamps = async () => {
     try {
+      const authToken = localStorage.getItem("vision2020_token");
       const res = await fetch("/api/screening-places", {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${authToken}` },
       });
       if (res.ok) {
         const data = await res.json();
@@ -82,8 +83,9 @@ export default function DrsmsFollowUp() {
   const fetchReferrals = async () => {
     setLoading(true);
     try {
+      const authToken = localStorage.getItem("vision2020_token");
       const res = await fetch("/api/vc-referrals", {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${authToken}` },
       });
       if (res.ok) {
         const data = await res.json();
@@ -107,9 +109,10 @@ export default function DrsmsFollowUp() {
     if (!selectedReferral) return;
     setUpdating(true);
     try {
+      const authToken = localStorage.getItem("vision2020_token");
       const res = await fetch(`/api/vc-referrals/${selectedReferral.id}/status`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${authToken}` },
         body: JSON.stringify({
           status: newStatus,
           targetCampCode: newTargetCamp,
@@ -117,16 +120,17 @@ export default function DrsmsFollowUp() {
         }),
       });
 
-      if (res.ok) {
-        toast({
-          title: "Follow-Up Record Updated 📋",
-          description: `Updated status for ${selectedReferral.patientName} to '${newStatus.replace(/_/g, " ")}'.`,
-        });
-        setActionModalOpen(false);
-        fetchReferrals();
-      } else {
-        throw new Error("Failed to update status");
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || `Server returned status ${res.status}`);
       }
+
+      toast({
+        title: "Follow-Up Record Updated 📋",
+        description: `Updated status for ${selectedReferral.patientName} to '${newStatus.replace(/_/g, " ")}'.`,
+      });
+      setActionModalOpen(false);
+      fetchReferrals();
     } catch (err: any) {
       toast({ title: "Update Error", description: err.message, variant: "destructive" });
     } finally {
