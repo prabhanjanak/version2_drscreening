@@ -43,14 +43,15 @@ router.get("/system-users", requireAuth(["admin", "super_admin"]), async (_req, 
 
 // POST /system-users
 router.post("/system-users", requireAuth(["admin", "super_admin"]), async (req, res): Promise<void> => {
-  const parsed = CreateSystemUserBody.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+  const { empId, name, email, mobile, userType, password, assignedTrack, status, assignedPlace } = req.body;
+
+  if (!empId || !name || !userType) {
+    res.status(400).json({ error: "empId, name, and userType are required" });
     return;
   }
 
   // Only super_admin can create a super_admin account
-  if (parsed.data.userType === "super_admin" && req.user?.userType !== "super_admin") {
+  if (userType === "super_admin" && req.user?.userType !== "super_admin") {
     res.status(403).json({ error: "Only the super admin can create a super admin account" });
     return;
   }
@@ -59,16 +60,16 @@ router.post("/system-users", requireAuth(["admin", "super_admin"]), async (req, 
   const [existing] = await db
     .select({ id: systemUsersTable.id })
     .from(systemUsersTable)
-    .where(eq(systemUsersTable.empId, parsed.data.empId));
+    .where(eq(systemUsersTable.empId, empId));
   if (existing) {
     res.status(400).json({ error: "EMP ID already exists" });
     return;
   }
 
-  if (parsed.data.email || parsed.data.mobile) {
+  if (email || mobile) {
     const checkDuplicate = await checkEmailOrMobileRegistered({
-      email: parsed.data.email,
-      mobile: parsed.data.mobile,
+      email,
+      mobile,
     });
     if (checkDuplicate) {
       res.status(400).json({ error: checkDuplicate.reason });
@@ -76,23 +77,23 @@ router.post("/system-users", requireAuth(["admin", "super_admin"]), async (req, 
     }
   }
 
-  const rawPassword = parsed.data.password || "Welcome@123";
+  const rawPassword = password || "Welcome@123";
   const passwordHash = await hashPassword(rawPassword);
   const reqPermissions = (req.body as { permissions?: string[] }).permissions ?? [];
   const [user] = await db
     .insert(systemUsersTable)
     .values({
-      empId: parsed.data.empId,
-      name: parsed.data.name,
-      email: parsed.data.email ?? null,
-      mobile: parsed.data.mobile ?? null,
-      userType: parsed.data.userType,
+      empId,
+      name,
+      email: email ?? null,
+      mobile: mobile ?? null,
+      userType,
       passwordHash,
-      assignedTrack: parsed.data.assignedTrack ?? null,
+      assignedTrack: assignedTrack ?? null,
       mustChangePassword: true,
       permissions: reqPermissions,
-      status: req.body.status || "active",
-      assignedPlace: req.body.assignedPlace || null,
+      status: status || "active",
+      assignedPlace: assignedPlace || null,
     })
     .returning();
   res.status(201).json(buildUser(user));
@@ -100,21 +101,17 @@ router.post("/system-users", requireAuth(["admin", "super_admin"]), async (req, 
 
 // PATCH /system-users/:id
 router.patch("/system-users/:id", requireAuth(["admin", "super_admin"]), async (req, res): Promise<void> => {
-  const params = UpdateSystemUserParams.safeParse(req.params);
-  if (!params.success) {
-    res.status(400).json({ error: params.error.message });
-    return;
-  }
-  const parsed = UpdateSystemUserBody.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+  const idParam = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+  const targetId = parseInt(idParam as string, 10);
+  if (isNaN(targetId)) {
+    res.status(400).json({ error: "Invalid user ID" });
     return;
   }
 
   const [targetUser] = await db
     .select()
     .from(systemUsersTable)
-    .where(eq(systemUsersTable.id, params.data.id))
+    .where(eq(systemUsersTable.id, targetId))
     .limit(1);
 
   if (!targetUser) {
@@ -129,16 +126,16 @@ router.patch("/system-users/:id", requireAuth(["admin", "super_admin"]), async (
   }
 
   // Only super_admin can promote/demote to/from super_admin
-  if ((parsed.data.userType === "super_admin" || (parsed.data.userType !== undefined && targetUser.userType === "super_admin")) && req.user?.userType !== "super_admin") {
+  if ((req.body.userType === "super_admin" || (req.body.userType !== undefined && targetUser.userType === "super_admin")) && req.user?.userType !== "super_admin") {
     res.status(403).json({ error: "Only the super admin can assign or revoke the super admin role" });
     return;
   }
 
-  if (parsed.data.email || parsed.data.mobile) {
+  if (req.body.email || req.body.mobile) {
     const checkDuplicate = await checkEmailOrMobileRegistered({
-      email: parsed.data.email,
-      mobile: parsed.data.mobile,
-      excludeSystemUserId: params.data.id,
+      email: req.body.email,
+      mobile: req.body.mobile,
+      excludeSystemUserId: targetId,
     });
     if (checkDuplicate) {
       res.status(400).json({ error: checkDuplicate.reason });
@@ -146,17 +143,17 @@ router.patch("/system-users/:id", requireAuth(["admin", "super_admin"]), async (
     }
   }
   const updateData: Record<string, unknown> = {};
-  if (parsed.data.empId !== undefined) updateData.empId = parsed.data.empId;
-  if (parsed.data.name !== undefined) updateData.name = parsed.data.name;
-  if (parsed.data.email !== undefined) updateData.email = parsed.data.email;
-  if (parsed.data.mobile !== undefined) updateData.mobile = parsed.data.mobile;
-  if (parsed.data.userType !== undefined) updateData.userType = parsed.data.userType;
-  if (parsed.data.assignedTrack !== undefined) updateData.assignedTrack = parsed.data.assignedTrack;
+  if (req.body.empId !== undefined) updateData.empId = req.body.empId;
+  if (req.body.name !== undefined) updateData.name = req.body.name;
+  if (req.body.email !== undefined) updateData.email = req.body.email;
+  if (req.body.mobile !== undefined) updateData.mobile = req.body.mobile;
+  if (req.body.userType !== undefined) updateData.userType = req.body.userType;
+  if (req.body.assignedTrack !== undefined) updateData.assignedTrack = req.body.assignedTrack;
   if (req.body.status !== undefined) updateData.status = req.body.status;
   if (req.body.assignedPlace !== undefined) updateData.assignedPlace = req.body.assignedPlace;
   const patchPermissions = (req.body as { permissions?: string[] }).permissions;
   if (patchPermissions !== undefined) updateData.permissions = patchPermissions;
-  const newPassword = parsed.data.password || (req.body as any).password;
+  const newPassword = req.body.password;
   if (newPassword) {
     updateData.passwordHash = await hashPassword(newPassword);
     updateData.mustChangePassword = false;
@@ -165,7 +162,7 @@ router.patch("/system-users/:id", requireAuth(["admin", "super_admin"]), async (
   const [user] = await db
     .update(systemUsersTable)
     .set(updateData)
-    .where(eq(systemUsersTable.id, params.data.id))
+    .where(eq(systemUsersTable.id, targetId))
     .returning();
   if (!user) {
     res.status(404).json({ error: "User not found" });
