@@ -12,7 +12,7 @@ class AppConstants {
   // For a deployed app without USB, replace this with the hosted HTTPS API URL.
   static const String defaultApiBaseUrl = String.fromEnvironment(
     'API_URL',
-    defaultValue: "http://127.0.0.1:5000/api",
+    defaultValue: "http://192.168.32.212:5000/api",
   );
 
   // Brand Palette (Sankara Orange & Deep Navy)
