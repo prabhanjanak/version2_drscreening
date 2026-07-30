@@ -156,9 +156,10 @@ router.patch("/system-users/:id", requireAuth(["admin", "super_admin"]), async (
   if (req.body.assignedPlace !== undefined) updateData.assignedPlace = req.body.assignedPlace;
   const patchPermissions = (req.body as { permissions?: string[] }).permissions;
   if (patchPermissions !== undefined) updateData.permissions = patchPermissions;
-  if (parsed.data.password) {
-    updateData.passwordHash = await hashPassword(parsed.data.password);
-    updateData.mustChangePassword = true;
+  const newPassword = parsed.data.password || (req.body as any).password;
+  if (newPassword) {
+    updateData.passwordHash = await hashPassword(newPassword);
+    updateData.mustChangePassword = false;
   }
 
   const [user] = await db

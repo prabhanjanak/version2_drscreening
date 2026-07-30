@@ -1028,7 +1028,7 @@ export const CreateSystemUserBody = zod.object({
   "name": zod.string(),
   "email": zod.string().optional(),
   "mobile": zod.string().optional(),
-  "userType": zod.enum(['admin', 'super_admin', 'track_coordinator', 'food_coordinator', 'scientific_committee', 'pr_member', 'coordinator_view_only']),
+  "userType": zod.string(),
   "password": zod.string().optional().describe('Defaults to Welcome@123 if omitted'),
   "assignedTrack": zod.string().optional()
 })
@@ -1046,7 +1046,7 @@ export const UpdateSystemUserBody = zod.object({
   "name": zod.string().optional(),
   "email": zod.string().optional(),
   "mobile": zod.string().optional(),
-  "userType": zod.enum(['admin', 'super_admin', 'track_coordinator', 'food_coordinator', 'scientific_committee', 'pr_member', 'coordinator_view_only']).optional(),
+  "userType": zod.string().optional(),
   "assignedTrack": zod.string().optional(),
   "password": zod.string().optional()
 })

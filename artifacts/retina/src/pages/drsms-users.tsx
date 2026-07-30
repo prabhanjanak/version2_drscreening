@@ -29,18 +29,62 @@ export default function DrsmsUsers() {
   
   // Modal states
   const [modalOpen, setModalOpen] = useState(false);
+  const [pwdResetModalOpen, setPwdResetModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<SystemUser | null>(null);
+  const [pwdResetUser, setPwdResetUser] = useState<SystemUser | null>(null);
 
   // Form fields
   const [name, setName] = useState("");
   const [empId, setEmpId] = useState(""); // Username
   const [password, setPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
   const [mobile, setMobile] = useState("");
   const [email, setEmail] = useState("");
   const [role, setRole] = useState("field_user");
   const [status, setStatus] = useState("active");
   const [assignedPlace, setAssignedPlace] = useState("");
   const [saving, setSaving] = useState(false);
+
+  const openResetPasswordModal = (user: SystemUser) => {
+    setPwdResetUser(user);
+    setNewPassword("");
+    setPwdResetModalOpen(true);
+  };
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!pwdResetUser || !newPassword) {
+      toast({ title: "Validation Error", description: "Please enter a new password.", variant: "destructive" });
+      return;
+    }
+    setSaving(true);
+    try {
+      const token = localStorage.getItem("vision2020_token");
+      const res = await fetch(`/api/system-users/${pwdResetUser.id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ password: newPassword })
+      });
+      if (!res.ok) {
+        const errJson = await res.json();
+        throw new Error(errJson.error || "Failed to reset password");
+      }
+      toast({ 
+        title: "Password Changed! 🔑", 
+        description: `Password for ${pwdResetUser.name} (${pwdResetUser.empId}) changed successfully.` 
+      });
+      setPwdResetModalOpen(false);
+      setNewPassword("");
+      fetchUsers();
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -234,13 +278,22 @@ export default function DrsmsUsers() {
                   {currentUser?.userType === "super_admin" && (
                     <div className="flex gap-1.5">
                       <button 
+                        onClick={() => openResetPasswordModal(u)}
+                        title="Change / Reset User Password"
+                        className="p-1.5 bg-amber-50 border border-amber-200 rounded-md text-amber-700 hover:bg-amber-100 transition-colors"
+                      >
+                        <Key className="h-3.5 w-3.5" />
+                      </button>
+                      <button 
                         onClick={() => openEditModal(u)}
+                        title="Edit User Details"
                         className="p-1.5 bg-white border border-slate-200 rounded-md text-slate-600 hover:bg-slate-50 transition-colors"
                       >
                         <Edit2 className="h-3.5 w-3.5" />
                       </button>
                       <button 
                         onClick={() => handleDelete(u.id)}
+                        title="Delete User"
                         disabled={u.empId === "010177"} // Prevent deleting root superadmin
                         className="p-1.5 bg-white border border-slate-200 rounded-md text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50"
                       >
@@ -380,6 +433,54 @@ export default function DrsmsUsers() {
                   <Button type="submit" disabled={saving} className="bg-[#FF6B00] hover:bg-[#E05E00] text-white h-8 text-xs rounded-lg px-4 flex items-center gap-1 font-semibold">
                     {saving && <RefreshCw className="h-3 w-3 animate-spin" />}
                     Save User
+                  </Button>
+                </div>
+              </CardContent>
+            </form>
+          </Card>
+        </div>
+      )}
+      {/* Dedicated Change Password Modal for Super Admin */}
+      {pwdResetModalOpen && pwdResetUser && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+          <Card className="w-full max-w-sm bg-white rounded-xl shadow-xl border border-slate-200 overflow-hidden">
+            <CardHeader className="flex flex-row justify-between items-center py-4 border-b border-slate-100 bg-amber-50/50">
+              <div>
+                <CardTitle className="text-base font-bold text-slate-900 flex items-center gap-1.5">
+                  <Key className="h-4.5 w-4.5 text-amber-600" /> Change User Password
+                </CardTitle>
+                <CardDescription className="text-xs text-slate-500">
+                  Target Account: <strong>{pwdResetUser.name}</strong> ({pwdResetUser.empId})
+                </CardDescription>
+              </div>
+              <button onClick={() => setPwdResetModalOpen(false)} className="text-slate-400 hover:text-slate-600">
+                <X className="h-5 w-5" />
+              </button>
+            </CardHeader>
+
+            <form onSubmit={handleResetPassword}>
+              <CardContent className="p-4 space-y-4 text-xs">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">New Password *</label>
+                  <input
+                    type="password"
+                    required
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="Enter new password (e.g. Sankara@123)"
+                    className="w-full text-xs border border-slate-300 p-2.5 rounded-lg focus:ring-2 focus:ring-[#FF6B00] outline-none"
+                  />
+                  <p className="text-[10px] text-slate-400 mt-1">
+                    Setting password here allows immediate login without forcing password change.
+                  </p>
+                </div>
+
+                <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+                  <Button type="button" variant="outline" onClick={() => setPwdResetModalOpen(false)} className="h-8 text-xs">
+                    Cancel
+                  </Button>
+                  <Button type="submit" disabled={saving} className="bg-[#FF6B00] hover:bg-orange-600 text-white h-8 text-xs font-bold px-4">
+                    {saving ? "Updating..." : "Update Password"}
                   </Button>
                 </div>
               </CardContent>
