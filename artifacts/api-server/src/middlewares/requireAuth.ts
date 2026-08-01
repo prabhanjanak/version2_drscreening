@@ -6,11 +6,14 @@ import { eq } from "drizzle-orm";
 export interface AuthUser {
   id: number;
   userType: string;
+  email?: string;
+  mobile?: string;
   participantId?: number;
   assignedTrack?: string;
   assignedPlace?: string;
   permissions?: string[];
 }
+
 
 declare global {
   namespace Express {

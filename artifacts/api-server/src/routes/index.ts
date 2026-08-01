@@ -8,6 +8,7 @@ import dashboardDrsmsRouter from "./dashboard-drsms";
 import visionCentersRouter from "./vision-centers";
 import vcReferralsRouter from "./vc-referrals";
 import remidioRouter from "./remidio";
+import settingsRouter from "./settings";
 
 const router: IRouter = Router();
 
@@ -20,5 +21,7 @@ router.use(dashboardDrsmsRouter);
 router.use(visionCentersRouter);
 router.use(vcReferralsRouter);
 router.use(remidioRouter);
+router.use(settingsRouter);
 
 export default router;
+
