@@ -159,6 +159,7 @@ router.post("/patients", requireAuth(), async (req, res) => {
     referralStatus,
     referToBaseHospital,
     baseHospitalRemarks,
+    remarks,
   } = req.body;
 
   if (!date || !screeningPlaceCode || !name || !age || !gender || !phone) {
@@ -232,6 +233,7 @@ router.post("/patients", requireAuth(), async (req, res) => {
         referralStatus: referralStatus || "Referred",
         referToBaseHospital: !!referToBaseHospital,
         baseHospitalRemarks: baseHospitalRemarks ? baseHospitalRemarks.trim() : null,
+        remarks: remarks ? remarks.trim() : null,
         createdBy: req.user!.id,
       })
       .returning();
@@ -269,6 +271,7 @@ router.put("/patients/:id", requireAuth(), async (req, res) => {
     referralStatus,
     referToBaseHospital,
     baseHospitalRemarks,
+    remarks,
     latitude,
     longitude,
   } = req.body;
@@ -297,6 +300,7 @@ router.put("/patients/:id", requireAuth(), async (req, res) => {
         referralStatus: referralStatus || existing.referralStatus,
         referToBaseHospital: referToBaseHospital !== undefined ? !!referToBaseHospital : existing.referToBaseHospital,
         baseHospitalRemarks: baseHospitalRemarks !== undefined ? baseHospitalRemarks : existing.baseHospitalRemarks,
+        remarks: remarks !== undefined ? remarks : existing.remarks,
         latitude: latitude || existing.latitude,
         longitude: longitude || existing.longitude,
       })

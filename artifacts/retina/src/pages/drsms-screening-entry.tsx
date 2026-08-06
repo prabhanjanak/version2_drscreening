@@ -30,6 +30,8 @@ const screeningFormSchema = z.object({
   imageQuality: z.string().default("Good"),
   referToBaseHospital: z.boolean().default(false),
   baseHospitalRemarks: z.string().optional().default(""),
+  otherAdvice: z.string().optional().default(""),
+  remarks: z.string().optional().default(""),
   latitude: z.string().optional(),
   longitude: z.string().optional(),
 });
@@ -39,6 +41,7 @@ type FormValues = z.infer<typeof screeningFormSchema>;
 const GENDER_OPTIONS = ["Male", "Female", "Other"];
 
 const DIABETES_DURATION_OPTIONS = [
+  "No Diabetes",
   "Newly Diagnosed",
   "0-1 Year",
   "1-5 Years",
@@ -187,6 +190,8 @@ export default function DrsmsScreeningEntry() {
       imageQuality: "Good",
       referToBaseHospital: false,
       baseHospitalRemarks: "",
+      otherAdvice: "",
+      remarks: "",
       latitude: "",
       longitude: "",
     }
@@ -529,7 +534,7 @@ export default function DrsmsScreeningEntry() {
           diabetesDuration: values.diabetesDuration,
           bloodPressure: bloodPressureStr,
           drStatus: values.drStatus,
-          advice: values.advice,
+          advice: values.advice === "Others" && values.otherAdvice?.trim() ? `Others: ${values.otherAdvice.trim()}` : values.advice,
           imagePath: remoteImagePath,
           imageQuality: values.imageQuality,
           latitude: values.latitude,
@@ -537,6 +542,7 @@ export default function DrsmsScreeningEntry() {
           referralStatus: "Referred",
           referToBaseHospital: values.referToBaseHospital,
           baseHospitalRemarks: values.baseHospitalRemarks,
+          remarks: values.remarks,
         })
       });
 
@@ -1081,6 +1087,22 @@ export default function DrsmsScreeningEntry() {
                   })}
                 </div>
                 {errors.advice && <p className="text-red-500 text-xs mt-1">{errors.advice.message}</p>}
+
+                {watch("advice") === "Others" && (
+                  <div className="mt-3 p-3 bg-orange-50/70 border border-orange-200 rounded-xl space-y-1.5 animate-fadeIn">
+                    <label className="block text-xs font-extrabold text-orange-900 uppercase">
+                      Specify Other Advice / Custom Action Plan *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={watch("otherAdvice") || ""}
+                      onChange={(e) => handleFieldChange("otherAdvice", e.target.value)}
+                      placeholder="Type custom advice (e.g. Cataract surgery referral, Refraction & glasses, Glaucoma evaluation)..."
+                      className="w-full text-xs border border-orange-300 p-2.5 rounded-lg bg-white outline-none focus:ring-2 focus:ring-[#FF6B00] font-semibold text-slate-900"
+                    />
+                  </div>
+                )}
               </div>
             </div>
 
@@ -1119,7 +1141,19 @@ export default function DrsmsScreeningEntry() {
               )}
             </div>
 
-            {/* Coordinates are automatically inherited from camp settings */}
+            {/* General Screening Remarks / Clinical Notes */}
+            <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl space-y-1.5">
+              <label className="block text-xs font-extrabold text-slate-700 uppercase flex items-center gap-1.5">
+                <FileText className="h-4 w-4 text-[#FF6B00]" /> General Screening Remarks / Clinical Notes
+              </label>
+              <textarea
+                rows={2}
+                value={watch("remarks") || ""}
+                onChange={(e) => handleFieldChange("remarks", e.target.value)}
+                placeholder="Enter general observations, patient history, systemic findings, or clinical comments..."
+                className="w-full text-xs border border-slate-300 p-2.5 rounded-lg bg-white outline-none focus:ring-2 focus:ring-[#FF6B00] font-medium text-slate-800"
+              />
+            </div>
           </CardContent>
         </Card>
 
