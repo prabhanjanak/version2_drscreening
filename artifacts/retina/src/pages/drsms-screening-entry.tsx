@@ -23,8 +23,8 @@ const screeningFormSchema = z.object({
   address: z.string().optional().default(""),
   phone: z.string().min(10, "Phone number must be at least 10 digits"),
   diabetesDuration: z.string().min(1, "Duration of diabetes is required"),
-  systolicBP: z.string().optional().default("120"),
-  diastolicBP: z.string().optional().default("80"),
+  systolicBP: z.string().optional().default(""),
+  diastolicBP: z.string().optional().default(""),
   drStatus: z.string().min(1, "DR Status is required"),
   advice: z.string().min(1, "Advice is required"),
   imageQuality: z.string().default("Good"),
@@ -183,8 +183,8 @@ export default function DrsmsScreeningEntry() {
       address: "",
       phone: "",
       diabetesDuration: "Newly Diagnosed",
-      systolicBP: "120",
-      diastolicBP: "80",
+      systolicBP: "",
+      diastolicBP: "",
       drStatus: "No DR",
       advice: "Annual Review",
       imageQuality: "Good",
@@ -516,7 +516,7 @@ export default function DrsmsScreeningEntry() {
         remoteImagePath = imagePreview || "/uploads/no_fundus_photo.png";
       }
 
-      const bloodPressureStr = `${values.systolicBP}/${values.diastolicBP}`;
+      const bloodPressureStr = (values.systolicBP?.trim() || values.diastolicBP?.trim()) ? `${values.systolicBP || ""}/${values.diastolicBP || ""}` : null;
       const res = await fetch("/api/patients", {
         method: "POST",
         headers: {
@@ -860,7 +860,7 @@ export default function DrsmsScreeningEntry() {
             </div>
 
             <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Blood Pressure (mmHg) *</label>
+              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Blood Pressure (mmHg) (Optional)</label>
               <div className="flex items-center gap-2">
                 <div className="flex-1">
                   <input
