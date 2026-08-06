@@ -13,7 +13,7 @@ class ApiService {
     final prefs = await SharedPreferences.getInstance();
     final saved = prefs.getString('api_base_url');
     if (saved != null && saved.isNotEmpty) {
-      if (saved.contains('10.0.2.2') || saved.contains('localhost') || saved.contains('127.0.0.1')) {
+      if (saved.contains('10.0.2.2') || saved.contains('localhost') || saved.contains('127.0.0.1') || saved.contains('192.168.')) {
         await prefs.setString('api_base_url', AppConstants.defaultApiBaseUrl);
         return AppConstants.defaultApiBaseUrl;
       }

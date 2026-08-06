@@ -7,12 +7,10 @@ class AppConstants {
   static const String tagline = "Serving Vision. Transforming Lives.";
   static const String sankaraAnniversary = "50 Years of Service (1977-2027) • 3 Million+ Free Surgeries";
 
-  // USB development uses `adb reverse tcp:5000 tcp:5000`, which maps the
-  // phone's localhost:5000 directly to the API running on the development Mac.
-  // For a deployed app without USB, replace this with the hosted HTTPS API URL.
+  // Production hosted server URL for Sankara Eye Foundation Netrartha Portal.
   static const String defaultApiBaseUrl = String.fromEnvironment(
     'API_URL',
-    defaultValue: "http://192.168.32.212:5000/api",
+    defaultValue: "https://netrartha.sankaraeye.in/api",
   );
 
   // Brand Palette (Sankara Orange & Deep Navy)
