@@ -5,7 +5,7 @@ import { requireAuth } from "../middlewares/requireAuth";
 
 const router = Router();
 
-router.get("/dashboard/drsms", requireAuth(["admin", "super_admin", "doctor", "field_user", "admin_unit", "unit_head", "facility_manager", "vision_center", "asha_worker"]), async (req, res) => {
+router.get("/dashboard/drsms", requireAuth(["admin", "super_admin", "doctor", "field_user", "admin_unit", "unit_head", "facility_manager", "vision_center", "asha_worker", "ophthalmic_officer", "outreach"]), async (req, res) => {
   try {
     const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
     const currentMonth = today.slice(0, 7); // YYYY-MM

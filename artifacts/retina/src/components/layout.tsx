@@ -23,6 +23,7 @@ const ROLE_LABELS: Record<string, string> = {
   unit_head: "Unit Head",
   outreach: "Outreach / Field Staff",
   facility_manager: "Facility Manager (Logistics)",
+  ophthalmic_officer: "Ophthalmic Officer",
   vision_center: "Vision Center (VC)",
   asha_worker: "ASHA Worker",
 };
