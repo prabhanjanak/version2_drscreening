@@ -29,6 +29,7 @@ const screeningFormSchema = z.object({
   advice: z.string().min(1, "Advice is required"),
   imageQuality: z.string().default("Good"),
   referToBaseHospital: z.boolean().default(false),
+  baseHospitalRemarks: z.string().optional().default(""),
   latitude: z.string().optional(),
   longitude: z.string().optional(),
 });
@@ -185,6 +186,7 @@ export default function DrsmsScreeningEntry() {
       advice: "Annual Review",
       imageQuality: "Good",
       referToBaseHospital: false,
+      baseHospitalRemarks: "",
       latitude: "",
       longitude: "",
     }
@@ -533,7 +535,8 @@ export default function DrsmsScreeningEntry() {
           latitude: values.latitude,
           longitude: values.longitude,
           referralStatus: "Referred",
-          referToBaseHospital: values.referToBaseHospital
+          referToBaseHospital: values.referToBaseHospital,
+          baseHospitalRemarks: values.baseHospitalRemarks,
         })
       });
 
@@ -1081,22 +1084,39 @@ export default function DrsmsScreeningEntry() {
               </div>
             </div>
 
-            {/* Refer to Base Hospital checkbox */}
-            <div className="bg-red-50/50 border border-red-200 p-4 rounded-xl flex items-center justify-between">
-              <div className="space-y-1">
-                <p className="font-extrabold text-slate-800 flex items-center gap-1">
-                  <ShieldAlert className="h-4 w-4 text-red-600" /> Refer to Base Hospital
-                </p>
-                <p className="text-[10px] text-slate-500 max-w-md">
-                  Flag patient for urgent referral to Sankara Eye Hospital for diagnostic confirmation.
-                </p>
+            {/* Refer to Base Hospital checkbox & Remarks */}
+            <div className="bg-red-50/50 border border-red-200 p-4 rounded-xl space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <p className="font-extrabold text-slate-800 flex items-center gap-1">
+                    <ShieldAlert className="h-4 w-4 text-red-600" /> Refer to Base Hospital
+                  </p>
+                  <p className="text-[10px] text-slate-500 max-w-md">
+                    Flag patient for urgent referral to Sankara Eye Hospital for diagnostic confirmation.
+                  </p>
+                </div>
+                <input
+                  type="checkbox"
+                  {...register("referToBaseHospital")}
+                  onChange={(e) => handleFieldChange("referToBaseHospital", e.target.checked)}
+                  className="h-5 w-5 rounded-md border-slate-300 text-red-600 focus:ring-red-500 bg-white cursor-pointer"
+                />
               </div>
-              <input
-                type="checkbox"
-                {...register("referToBaseHospital")}
-                onChange={(e) => handleFieldChange("referToBaseHospital", e.target.checked)}
-                className="h-5 w-5 rounded-md border-slate-300 text-red-600 focus:ring-red-500 bg-white"
-              />
+
+              {watch("referToBaseHospital") && (
+                <div className="pt-2 border-t border-red-200/60 space-y-1">
+                  <label className="block text-xs font-bold text-red-900">
+                    Base Hospital Referral Remarks / Notes
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={watch("baseHospitalRemarks") || ""}
+                    onChange={(e) => handleFieldChange("baseHospitalRemarks", e.target.value)}
+                    placeholder="Enter reason for referral to Base Hospital, transport notes, or specific surgical advice..."
+                    className="w-full text-xs border border-red-300 p-2.5 rounded-lg bg-white outline-none focus:ring-2 focus:ring-red-500 font-medium text-slate-800"
+                  />
+                </div>
+              )}
             </div>
 
             {/* Coordinates are automatically inherited from camp settings */}

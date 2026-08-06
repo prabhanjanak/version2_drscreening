@@ -73,8 +73,8 @@ export function AppLayout({ children }: LayoutProps) {
       items.push({ label: "Vision Centers", href: "/vision-centers", icon: Building2 });
     }
 
-    // Patient Referral Portal (ASHA Workers, Vision Centers, Outreach & Management)
-    if (type === "super_admin" || type === "admin" || type === "admin_unit" || type === "unit_head" || type === "asha_worker" || type === "outreach" || type === "vision_center") {
+    // Patient Referral Portal (Ophthalmic Officers, ASHA Workers, Vision Centers, Outreach & Management)
+    if (type === "super_admin" || type === "admin" || type === "admin_unit" || type === "unit_head" || type === "asha_worker" || type === "ophthalmic_officer" || type === "outreach" || type === "vision_center") {
       items.push({ label: "Patient Referral", href: "/asha-referrals", icon: Heart });
       items.push({ label: "Follow Up", href: "/follow-up", icon: PhoneCall });
     }
@@ -83,7 +83,7 @@ export function AppLayout({ children }: LayoutProps) {
       items.push({ label: "Facility Dispatch", href: "/facility-schedule", icon: Truck });
     }
 
-    if (type === "super_admin" || type === "admin_unit" || type === "outreach") {
+    if (type === "super_admin" || type === "admin" || type === "admin_unit" || type === "outreach" || type === "ophthalmic_officer" || type === "field_user") {
       items.push({ label: "Screening Entry", href: "/patients/new", icon: Camera });
     }
 

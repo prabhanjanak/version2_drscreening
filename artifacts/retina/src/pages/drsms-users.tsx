@@ -389,6 +389,7 @@ export default function DrsmsUsers() {
                       className="w-full text-xs border border-slate-300 p-2.5 rounded-lg bg-white"
                     >
                       <option value="field_user">Field User / Screener</option>
+                      <option value="ophthalmic_officer">Ophthalmic Officer</option>
                       <option value="asha_worker">ASHA Worker</option>
                       <option value="vision_center">Vision Center Officer</option>
                       <option value="facility_manager">Facility Manager (Logistics)</option>

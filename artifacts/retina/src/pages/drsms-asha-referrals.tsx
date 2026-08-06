@@ -51,14 +51,13 @@ export default function DrsmsAshaReferrals() {
   const [drNotes, setDrNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  const token = localStorage.getItem("vision2020_token");
-
   const fetchData = async () => {
     setLoading(true);
     try {
+      const authToken = localStorage.getItem("vision2020_token");
       // 1. Fetch active camps
       const campsRes = await fetch("/api/screening-places", {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${authToken}` }
       });
       let activeCamps: any[] = [];
       if (campsRes.ok) {
@@ -66,9 +65,9 @@ export default function DrsmsAshaReferrals() {
         setCamps(activeCamps);
       }
 
-      // 2. Fetch ASHA referrals
-      const refRes = await fetch("/api/vc-referrals?referrerType=asha_worker", {
-        headers: { Authorization: `Bearer ${token}` }
+      // 2. Fetch referrals
+      const refRes = await fetch("/api/vc-referrals", {
+        headers: { Authorization: `Bearer ${authToken}` }
       });
       if (refRes.ok) {
         const data = await refRes.json();
@@ -108,16 +107,20 @@ export default function DrsmsAshaReferrals() {
 
     setSubmitting(true);
     try {
+      const authToken = localStorage.getItem("vision2020_token");
+      const userRole = (user as any)?.userType || "ophthalmic_officer";
+      const referrerType = userRole === "asha_worker" ? "asha_worker" : userRole === "ophthalmic_officer" ? "ophthalmic_officer" : "vision_center";
+
       const res = await fetch("/api/vc-referrals", {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${authToken}` },
         body: JSON.stringify({
           patientName,
           age: parseInt(age, 10),
           gender,
           phone: phone.trim() || "N/A",
           address: address || "Shimoga",
-          referrerType: "asha_worker",
+          referrerType,
           phcName: phcName || null,
           randomBloodSugar: randomBloodSugar || null,
           symptoms: symptoms || null,
@@ -128,7 +131,7 @@ export default function DrsmsAshaReferrals() {
 
       if (!res.ok) {
         const err = await res.json();
-        throw new Error(err.error || "Failed to submit ASHA referral");
+        throw new Error(err.error || "Failed to submit patient referral");
       }
 
       toast({ 

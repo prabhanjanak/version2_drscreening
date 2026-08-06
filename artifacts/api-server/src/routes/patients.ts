@@ -158,6 +158,7 @@ router.post("/patients", requireAuth(), async (req, res) => {
     longitude,
     referralStatus,
     referToBaseHospital,
+    baseHospitalRemarks,
   } = req.body;
 
   if (!date || !screeningPlaceCode || !name || !age || !gender || !phone) {
@@ -230,6 +231,7 @@ router.post("/patients", requireAuth(), async (req, res) => {
         longitude: placeDetails?.longitude || null,
         referralStatus: referralStatus || "Referred",
         referToBaseHospital: !!referToBaseHospital,
+        baseHospitalRemarks: baseHospitalRemarks ? baseHospitalRemarks.trim() : null,
         createdBy: req.user!.id,
       })
       .returning();
@@ -266,6 +268,7 @@ router.put("/patients/:id", requireAuth(), async (req, res) => {
     imageQuality,
     referralStatus,
     referToBaseHospital,
+    baseHospitalRemarks,
     latitude,
     longitude,
   } = req.body;
@@ -293,6 +296,7 @@ router.put("/patients/:id", requireAuth(), async (req, res) => {
         imageQuality: imageQuality || existing.imageQuality,
         referralStatus: referralStatus || existing.referralStatus,
         referToBaseHospital: referToBaseHospital !== undefined ? !!referToBaseHospital : existing.referToBaseHospital,
+        baseHospitalRemarks: baseHospitalRemarks !== undefined ? baseHospitalRemarks : existing.baseHospitalRemarks,
         latitude: latitude || existing.latitude,
         longitude: longitude || existing.longitude,
       })

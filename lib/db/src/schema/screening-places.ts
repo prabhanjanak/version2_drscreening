@@ -13,6 +13,8 @@ export const screeningPlacesTable = pgTable("screening_places", {
   longitude: text("longitude"),
   taluk: text("taluk"),
   pincode: text("pincode"),
+  campDate: text("camp_date"),
+  mapLink: text("map_link"),
   sankaraUnit: text("sankara_unit"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),

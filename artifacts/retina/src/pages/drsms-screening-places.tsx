@@ -18,6 +18,8 @@ interface ScreeningPlace {
   longitude?: string;
   taluk?: string;
   pincode?: string;
+  campDate?: string;
+  mapLink?: string;
   sankaraUnit?: string;
 }
 
@@ -242,10 +244,11 @@ export default function DrsmsScreeningPlaces() {
   // Form fields
   const [name, setName] = useState("");
   const [shortCode, setShortCode] = useState("");
-  const [stateStr, setStateStr] = useState("Tamil Nadu");
-  const [district, setDistrict] = useState("Coimbatore");
-  const [taluk, setTaluk] = useState("Pollachi");
-  const [pincode, setPincode] = useState("642001");
+  const [stateStr, setStateStr] = useState("Karnataka");
+  const [district, setDistrict] = useState("Shimoga (Shivamogga)");
+  const [taluk, setTaluk] = useState("Shimoga");
+  const [pincode, setPincode] = useState("577201");
+  const [campDate, setCampDate] = useState(new Date().toISOString().split("T")[0]);
   const [status, setStatus] = useState("active");
   const [latitude, setLatitude] = useState("");
   const [longitude, setLongitude] = useState("");
@@ -309,10 +312,18 @@ export default function DrsmsScreeningPlaces() {
     fetchPlacesAndPatients();
   }, []);
 
-  // Google Maps URL coordinate parser
+  // Google Maps URL coordinate parser with Pincode & Name Auto-detect
   const handleMapsUrlChange = (url: string) => {
     setMapsUrl(url);
     if (!url) return;
+
+    // Detect 6-digit Indian Pincode in text/URL
+    const pincodeRegex = /\b[1-9][0-9]{5}\b/;
+    const pincodeMatch = url.match(pincodeRegex);
+    if (pincodeMatch) {
+      setPincode(pincodeMatch[0]);
+      toast({ title: "Pincode Auto-Detected", description: `Found pincode ${pincodeMatch[0]}` });
+    }
 
     // Pattern 1: search for @lat,lng
     const atRegex = /@(-?\d+\.\d+),(-?\d+\.\d+)/;
@@ -454,10 +465,11 @@ export default function DrsmsScreeningPlaces() {
     setEditingPlace(null);
     setName("");
     setShortCode("");
-    setStateStr("Tamil Nadu");
-    setDistrict("Coimbatore");
-    setTaluk("Pollachi");
-    setPincode("642001");
+    setStateStr("Karnataka");
+    setDistrict("Shimoga (Shivamogga)");
+    setTaluk("Shimoga");
+    setPincode("577201");
+    setCampDate(new Date().toISOString().split("T")[0]);
     setStatus("active");
     setLatitude("");
     setLongitude("");
@@ -474,18 +486,19 @@ export default function DrsmsScreeningPlaces() {
     setDistrict(place.district);
     setTaluk(place.taluk || "");
     setPincode(place.pincode || "");
+    setCampDate(place.campDate || new Date().toISOString().split("T")[0]);
     setStatus(place.status);
     setLatitude(place.latitude || "");
     setLongitude(place.longitude || "");
-    setMapsUrl("");
+    setMapsUrl(place.mapLink || "");
     setSankaraUnit(place.sankaraUnit || "Sankara Eye Hospital, Shimoga (Shivamogga)");
     setModalOpen(true);
   };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || !shortCode || !district || !stateStr) {
-      toast({ title: "Validation Error", description: "All fields are required", variant: "destructive" });
+    if (!name || !shortCode || !district || !stateStr || !campDate) {
+      toast({ title: "Validation Error", description: "Name, Short Code, District, State, and Camp Date are required.", variant: "destructive" });
       return;
     }
 
@@ -512,6 +525,8 @@ export default function DrsmsScreeningPlaces() {
           longitude: longitude || null,
           taluk,
           pincode,
+          campDate,
+          mapLink: mapsUrl || null,
           sankaraUnit
         })
       });
@@ -645,14 +660,14 @@ export default function DrsmsScreeningPlaces() {
         const lng = parseFloat(p.longitude);
 
         // Green pin if completed, Red if active
-        const color = p.status === "completed" ? "green" : "red";
-        const customIcon = L.icon({
-          iconUrl: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-${color}.png`,
-          shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png",
-          iconSize: [25, 41],
-          iconAnchor: [12, 41],
-          popupAnchor: [1, -34],
-          shadowSize: [41, 41]
+        // SVG pin marker for 100% production reliability
+        const pinColor = p.status === "completed" ? "#10B981" : "#FF6B00";
+        const customIcon = L.divIcon({
+          className: "custom-camp-pin",
+          html: `<div style="background-color: ${pinColor}; width: 28px; height: 28px; border-radius: 50%; border: 3px solid white; box-shadow: 0 4px 12px rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 13px;">📍</div>`,
+          iconSize: [28, 28],
+          iconAnchor: [14, 14],
+          popupAnchor: [0, -14]
         });
 
         // Calculate statistics
@@ -854,17 +869,28 @@ export default function DrsmsScreeningPlaces() {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-3 gap-3">
                   <div>
-                    <label className="block font-semibold text-slate-600 mb-1">Short Code (3-4 Letters)</label>
+                    <label className="block font-semibold text-slate-600 mb-1">Short Code *</label>
                     <input
                       type="text"
                       disabled={!!editingPlace}
-                      maxLength={4}
+                      maxLength={6}
                       value={shortCode}
                       onChange={(e) => setShortCode(e.target.value.toUpperCase())}
-                      placeholder="e.g. SHM"
+                      placeholder="e.g. SHM01"
                       className="w-full text-xs border border-slate-300 p-2.5 rounded-lg focus:ring-2 focus:ring-[#FF6B00] outline-none disabled:bg-slate-50"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold text-slate-600 mb-1">Camp Date *</label>
+                    <input
+                      type="date"
+                      required
+                      value={campDate}
+                      onChange={(e) => setCampDate(e.target.value)}
+                      className="w-full text-xs border border-slate-300 p-2 rounded-lg bg-white outline-none focus:ring-2 focus:ring-[#FF6B00]"
                     />
                   </div>
 
@@ -882,7 +908,7 @@ export default function DrsmsScreeningPlaces() {
                   </div>
                 </div>
 
-                {/* Cascading dropdown selectors */}
+                {/* Cascading location selectors */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block font-semibold text-slate-600 mb-1">State</label>
@@ -913,29 +939,38 @@ export default function DrsmsScreeningPlaces() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block font-semibold text-slate-600 mb-1">Taluk</label>
-                    <select
+                    <label className="block font-semibold text-slate-600 mb-1">Taluk / Sub-District</label>
+                    <input
+                      type="text"
+                      list="taluk-suggestions"
                       value={taluk}
                       onChange={(e) => setTaluk(e.target.value)}
+                      placeholder="e.g. Shimoga Rural / Ayanur"
                       className="w-full text-xs border border-slate-300 p-2.5 rounded-lg bg-white outline-none focus:ring-1 focus:ring-[#FF6B00]"
-                    >
+                    />
+                    <datalist id="taluk-suggestions">
                       {talukOptions.map(tk => (
-                        <option key={tk} value={tk}>{tk}</option>
+                        <option key={tk} value={tk} />
                       ))}
-                    </select>
+                    </datalist>
                   </div>
 
                   <div>
                     <label className="block font-semibold text-slate-600 mb-1">Pincode</label>
-                    <select
+                    <input
+                      type="text"
+                      maxLength={6}
+                      list="pincode-suggestions"
                       value={pincode}
                       onChange={(e) => setPincode(e.target.value)}
+                      placeholder="e.g. 577211"
                       className="w-full text-xs border border-slate-300 p-2.5 rounded-lg bg-white outline-none focus:ring-1 focus:ring-[#FF6B00]"
-                    >
+                    />
+                    <datalist id="pincode-suggestions">
                       {pincodeOptions.map(pc => (
-                        <option key={pc} value={pc}>{pc}</option>
+                        <option key={pc} value={pc} />
                       ))}
-                    </select>
+                    </datalist>
                   </div>
                 </div>
 

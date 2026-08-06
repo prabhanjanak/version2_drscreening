@@ -56,6 +56,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!isPublicRoute(location)) {
           setLocation("/login");
         }
+      } else if (status === 403) {
+        toast({
+          title: "Permission Denied 🚫",
+          description: "You do not have relevant permissions to perform this action. Please contact Super Admin.",
+          variant: "destructive",
+        });
       }
     }
   }, [error, location]);

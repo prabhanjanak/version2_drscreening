@@ -25,6 +25,7 @@ export const patientsTable = pgTable("patients", {
   longitude: text("longitude"),
   referralStatus: text("referral_status").notNull().default("Referred"), // Referred | Visited | Treated | Follow-up
   referToBaseHospital: boolean("refer_to_base_hospital").notNull().default(false),
+  baseHospitalRemarks: text("base_hospital_remarks"),
   createdBy: integer("created_by").notNull().references(() => systemUsersTable.id),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),

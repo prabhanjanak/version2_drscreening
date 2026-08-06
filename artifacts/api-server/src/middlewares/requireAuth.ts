@@ -103,7 +103,7 @@ export function requireAuth(allowedTypes?: string[]) {
     }
 
     if (allowedTypes && !allowedTypes.includes(user.userType)) {
-      res.status(403).json({ error: "Forbidden" });
+      res.status(403).json({ error: "You do not have relevant permissions to perform this action. Please contact Super Admin." });
       return;
     }
     req.user = user;

@@ -83,12 +83,13 @@ router.post("/vc-referrals", requireAuth(), async (req, res) => {
       return;
     }
 
-    const effectiveReferrerType = referrerType || (req.user?.userType === "asha_worker" ? "asha_worker" : "vision_center");
-    const effectiveVcCode = visionCenterCode || req.user?.assignedPlace || "ASHA_WORKER";
+    const userType = req.user?.userType || "outreach";
+    const effectiveReferrerType = referrerType || (userType === "asha_worker" ? "asha_worker" : userType === "ophthalmic_officer" ? "ophthalmic_officer" : "vision_center");
+    const effectiveVcCode = (visionCenterCode || req.user?.assignedPlace || "OUTREACH_REFERRAL").toUpperCase().trim();
 
     // Lookup vision center if code provided
     let vcId: number | null = null;
-    if (effectiveVcCode) {
+    if (effectiveVcCode && effectiveVcCode !== "OUTREACH_REFERRAL" && effectiveVcCode !== "ASHA_WORKER") {
       const [vc] = await db.select().from(visionCentersTable).where(eq(visionCentersTable.shortCode, effectiveVcCode));
       if (vc) {
         vcId = vc.id;

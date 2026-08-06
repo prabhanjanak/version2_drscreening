@@ -15,11 +15,11 @@ router.get("/screening-places", requireAuth(), async (_req, res) => {
   }
 });
 
-// POST /api/screening-places - Create a new screening place (Admin/Super Admin only)
-router.post("/screening-places", requireAuth(["admin", "super_admin", "admin_unit"]), async (req, res) => {
-  const { name, shortCode, district, state, status, latitude, longitude, taluk, pincode, sankaraUnit } = req.body;
+// POST /api/screening-places - Create a new screening place
+router.post("/screening-places", requireAuth(["admin", "super_admin", "admin_unit", "outreach"]), async (req, res) => {
+  const { name, shortCode, district, state, status, latitude, longitude, taluk, pincode, campDate, mapLink, sankaraUnit } = req.body;
   if (!name || !shortCode || !district || !state) {
-    res.status(400).json({ error: "Missing required fields" });
+    res.status(400).json({ error: "Missing required fields (name, shortCode, district, state)" });
     return;
   }
 
@@ -46,6 +46,8 @@ router.post("/screening-places", requireAuth(["admin", "super_admin", "admin_uni
         longitude: longitude || null,
         taluk: taluk || null,
         pincode: pincode || null,
+        campDate: campDate || null,
+        mapLink: mapLink || null,
         sankaraUnit: sankaraUnit || null,
       })
       .returning();
@@ -56,15 +58,15 @@ router.post("/screening-places", requireAuth(["admin", "super_admin", "admin_uni
   }
 });
 
-// PUT /api/screening-places/:id - Update screening place (Admin/Super Admin only)
-router.put("/screening-places/:id", requireAuth(["admin", "super_admin", "admin_unit"]), async (req, res) => {
+// PUT /api/screening-places/:id - Update screening place
+router.put("/screening-places/:id", requireAuth(["admin", "super_admin", "admin_unit", "outreach"]), async (req, res) => {
   const id = parseInt(req.params.id as string, 10);
   if (isNaN(id)) {
     res.status(400).json({ error: "Invalid place ID" });
     return;
   }
 
-  const { name, district, state, status, latitude, longitude, taluk, pincode, sankaraUnit } = req.body;
+  const { name, district, state, status, latitude, longitude, taluk, pincode, campDate, mapLink, sankaraUnit } = req.body;
   try {
     const [existing] = await db
       .select()
@@ -87,6 +89,8 @@ router.put("/screening-places/:id", requireAuth(["admin", "super_admin", "admin_
         longitude: longitude !== undefined ? longitude : existing.longitude,
         taluk: taluk !== undefined ? taluk : existing.taluk,
         pincode: pincode !== undefined ? pincode : existing.pincode,
+        campDate: campDate !== undefined ? campDate : existing.campDate,
+        mapLink: mapLink !== undefined ? mapLink : existing.mapLink,
         sankaraUnit: sankaraUnit !== undefined ? sankaraUnit : existing.sankaraUnit,
       })
       .where(eq(screeningPlacesTable.id, id))
