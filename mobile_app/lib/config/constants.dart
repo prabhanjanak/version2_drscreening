@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 class AppConstants {
   // Application Name & Branding
   static const String appName = "Netrartha";
-  static const String appVersion = "v1.0.0";
+  static const String appVersion = "v1.0.2";
   static const String tagline = "Serving Vision. Transforming Lives.";
   static const String sankaraAnniversary = "50 Years of Service (1977-2027) • 3 Million+ Free Surgeries";
 

@@ -143,7 +143,7 @@ class _LoginViewState extends State<LoginView> {
 
                   // App Title & Tagline
                   const Text(
-                    "Netrartha v1",
+                    "Netrartha v1.0.2",
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 28,

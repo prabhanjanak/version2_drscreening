@@ -1,7 +1,7 @@
 name: netrartha_mobile
-description: "Netrartha v1 - Outreach Eye Screening & Vision Center Tele-Ophthalmology Mobile App for Sankara Eye Foundation"
+description: "Netrartha v1.0.2 - Outreach Eye Screening & Vision Center Tele-Ophthalmology Mobile App for Sankara Eye Foundation"
 publish_to: "none"
-version: 1.0.0+1
+version: 1.0.2+3
 
 environment:
   sdk: ">=3.0.0 <4.0.0"

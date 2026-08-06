@@ -129,7 +129,7 @@ export default function Login() {
                   Netrartha
                 </h1>
                 <span className="bg-[#FF6B00] text-white text-xs font-black px-2.5 py-1 rounded-lg shadow-md uppercase tracking-wider">
-                  v1.0
+                  v1.0.2
                 </span>
               </div>
               <p className="text-sm sm:text-base text-orange-300 lg:text-[#FF6B00] font-extrabold tracking-wide uppercase">
@@ -281,7 +281,7 @@ export default function Login() {
 
       {/* Footer */}
       <footer className="relative z-10 w-full py-3 text-center text-[10px] text-slate-500 font-bold border-t border-slate-200 bg-white/90 backdrop-blur-md">
-        © 2025 Sankara Eye Foundation India &nbsp;•&nbsp; Sri Kanchi Kamakoti Medical Trust &nbsp;•&nbsp; Netrartha v1.0
+        © 2025 Sankara Eye Foundation India &nbsp;•&nbsp; Sri Kanchi Kamakoti Medical Trust &nbsp;•&nbsp; Netrartha v1.0.2
       </footer>
     </div>
   );
