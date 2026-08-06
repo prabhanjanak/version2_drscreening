@@ -22,7 +22,10 @@ export default function DrsmsAnalytics() {
       const res = await fetch("/api/superadmin/analytics", {
         headers: { Authorization: `Bearer ${token}` }
       });
-      if (!res.ok) throw new Error("Failed to fetch analytics statistics");
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.error || `Failed with status ${res.status}`);
+      }
       const result = await res.json();
       setData(result);
       if (showToast) {
