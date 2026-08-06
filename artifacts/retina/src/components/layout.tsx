@@ -5,7 +5,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { 
   LogOut, LayoutDashboard, Users, MapPin, 
   Settings, ShieldAlert, FileText, Camera,
-  Activity, Menu, X, WifiOff, User, Building2, Truck, Smartphone, MoreHorizontal, ChevronRight, Heart, PhoneCall
+  Activity, Menu, X, WifiOff, User, Building2, Truck, Smartphone, MoreHorizontal, ChevronRight, Heart, PhoneCall, BarChart3
 } from "lucide-react";
 import sankaraTextBanner from "@assets/sankara_eye_icon.png"; /* SANKARA EYE FOUNDATION - INDIA text banner */
 import { UserProfileDialog } from "./user-profile-dialog";
@@ -95,6 +95,10 @@ export function AppLayout({ children }: LayoutProps) {
         { label: "Camps / Places", href: "/screening-places", icon: MapPin },
         { label: "User Accounts", href: "/users", icon: Users }
       );
+    }
+
+    if (type === "super_admin" || type === "admin") {
+      items.push({ label: "Analytics & Usage", href: "/analytics", icon: BarChart3 });
     }
 
     if (type === "super_admin" || type === "admin" || type === "admin_unit" || type === "unit_head") {

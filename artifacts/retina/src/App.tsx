@@ -25,6 +25,7 @@ import DrsmsVisionCenters from "@/pages/drsms-vision-centers";
 import DrsmsFacilitySchedule from "@/pages/drsms-facility-schedule";
 import DrsmsAshaReferrals from "@/pages/drsms-asha-referrals";
 import DrsmsFollowUp from "@/pages/drsms-follow-up";
+import DrsmsAnalytics from "@/pages/drsms-analytics";
 
 // Wire the stored JWT into every generated API hook so useGetMe etc. send auth headers
 setAuthTokenGetter(() => localStorage.getItem("vision2020_token"));
@@ -44,6 +45,9 @@ function Router() {
       {/* DRSMS PWA Routes */}
       <Route path="/dashboard">
         {() => <AppLayout><DrsmsDashboard /></AppLayout>}
+      </Route>
+      <Route path="/analytics">
+        {() => <AppLayout><DrsmsAnalytics /></AppLayout>}
       </Route>
       <Route path="/vision-centers">
         {() => <AppLayout><DrsmsVisionCenters /></AppLayout>}

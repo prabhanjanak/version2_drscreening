@@ -9,6 +9,7 @@ import visionCentersRouter from "./vision-centers";
 import vcReferralsRouter from "./vc-referrals";
 import remidioRouter from "./remidio";
 import settingsRouter from "./settings";
+import superadminAnalyticsRouter from "./superadmin-analytics";
 
 const router: IRouter = Router();
 
@@ -22,6 +23,7 @@ router.use(visionCentersRouter);
 router.use(vcReferralsRouter);
 router.use(remidioRouter);
 router.use(settingsRouter);
+router.use(superadminAnalyticsRouter);
 
 export default router;
 
