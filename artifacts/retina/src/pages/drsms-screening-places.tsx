@@ -312,7 +312,80 @@ export default function DrsmsScreeningPlaces() {
     fetchPlacesAndPatients();
   }, []);
 
-  // Google Maps URL coordinate parser with Pincode & Name Auto-detect
+  // Reverse geocoding helper to fetch village name, taluk, district & pincode from coordinates
+  const performReverseGeocode = async (latStr: string, lonStr: string) => {
+    setLatitude(latStr);
+    setLongitude(lonStr);
+    setGpsLoading(true);
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?lat=${latStr}&lon=${lonStr}&format=json`,
+        {
+          headers: {
+            "Accept-Language": "en",
+            "User-Agent": "DRSMS-Outreach-Application/1.0",
+          },
+        }
+      );
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.address) {
+          const addr = data.address;
+
+          const villageName =
+            addr.village ||
+            addr.suburb ||
+            addr.hamlet ||
+            addr.neighbourhood ||
+            addr.town ||
+            addr.city_district ||
+            "";
+
+          const talukName =
+            addr.town ||
+            addr.county ||
+            addr.city_district ||
+            addr.suburb ||
+            "";
+
+          const districtName =
+            addr.state_district ||
+            addr.county ||
+            addr.district ||
+            "";
+
+          const postCode = addr.postcode || "";
+          const stateName = addr.state || "Karnataka";
+
+          if (villageName) {
+            setName((prev) => (prev.trim() ? prev : `${villageName} Camp`));
+          }
+          if (talukName) setTaluk(talukName.replace(/\staluku$/i, "").replace(/\staluk$/i, ""));
+          if (postCode) setPincode(postCode);
+          if (stateName && LOCATION_DATA[stateName]) setStateStr(stateName);
+
+          if (districtName) {
+            const matchedDistrict = Object.keys(LOCATION_DATA[stateName] || {}).find(
+              (d) => d.toLowerCase().includes(districtName.toLowerCase()) || districtName.toLowerCase().includes(d.toLowerCase())
+            );
+            if (matchedDistrict) setDistrict(matchedDistrict);
+          }
+
+          toast({
+            title: "Village & Location Auto-Detected! 📍",
+            description: `Village: ${villageName || "Detected"}, Taluk: ${talukName || "Detected"} (${postCode})`,
+          });
+        }
+      }
+    } catch (err: any) {
+      console.error("Reverse geocoding error:", err);
+    } finally {
+      setGpsLoading(false);
+    }
+  };
+
+  // Google Maps URL coordinate parser with Reverse Geocoding
   const handleMapsUrlChange = (url: string) => {
     setMapsUrl(url);
     if (!url) return;
@@ -322,16 +395,13 @@ export default function DrsmsScreeningPlaces() {
     const pincodeMatch = url.match(pincodeRegex);
     if (pincodeMatch) {
       setPincode(pincodeMatch[0]);
-      toast({ title: "Pincode Auto-Detected", description: `Found pincode ${pincodeMatch[0]}` });
     }
 
     // Pattern 1: search for @lat,lng
     const atRegex = /@(-?\d+\.\d+),(-?\d+\.\d+)/;
     const atMatch = url.match(atRegex);
     if (atMatch) {
-      setLatitude(atMatch[1]);
-      setLongitude(atMatch[2]);
-      toast({ title: "Coordinates Extracted", description: `Parsed latitude/longitude from URL` });
+      performReverseGeocode(atMatch[1], atMatch[2]);
       return;
     }
 
@@ -339,9 +409,7 @@ export default function DrsmsScreeningPlaces() {
     const placeRegex = /place\/(-?\d+\.\d+),(-?\d+\.\d+)/;
     const placeMatch = url.match(placeRegex);
     if (placeMatch) {
-      setLatitude(placeMatch[1]);
-      setLongitude(placeMatch[2]);
-      toast({ title: "Coordinates Extracted", description: `Parsed latitude/longitude from URL` });
+      performReverseGeocode(placeMatch[1], placeMatch[2]);
       return;
     }
 
@@ -349,25 +417,21 @@ export default function DrsmsScreeningPlaces() {
     const queryRegex = /query=(-?\d+\.\d+),(-?\d+\.\d+)/;
     const queryMatch = url.match(queryRegex);
     if (queryMatch) {
-      setLatitude(queryMatch[1]);
-      setLongitude(queryMatch[2]);
-      toast({ title: "Coordinates Extracted", description: `Parsed latitude/longitude from URL` });
+      performReverseGeocode(queryMatch[1], queryMatch[2]);
       return;
     }
 
-    // Fallback: search for two floating numbers comma separated
+    // Fallback: search for two floating numbers comma separated (e.g. 13.695831582045086, 75.82342714503307)
     const floatRegex = /(-?\d+\.\d+)\s*,\s*(-?\d+\.\d+)/;
     const floatMatch = url.match(floatRegex);
     if (floatMatch) {
-      setLatitude(floatMatch[1]);
-      setLongitude(floatMatch[2]);
-      toast({ title: "Coordinates Extracted", description: `Parsed coordinates from text` });
+      performReverseGeocode(floatMatch[1], floatMatch[2]);
     }
   };
 
   const extractCoordinates = async () => {
     if (!mapsUrl) {
-      toast({ title: "Input Required", description: "Please paste a link, address, or plus code first.", variant: "destructive" });
+      toast({ title: "Input Required", description: "Please paste a link, address, or coordinates first.", variant: "destructive" });
       return;
     }
 
@@ -375,43 +439,34 @@ export default function DrsmsScreeningPlaces() {
     const atRegex = /@(-?\d+\.\d+),(-?\d+\.\d+)/;
     const atMatch = mapsUrl.match(atRegex);
     if (atMatch) {
-      setLatitude(atMatch[1]);
-      setLongitude(atMatch[2]);
-      toast({ title: "Coordinates Extracted", description: `Parsed latitude/longitude from URL` });
+      performReverseGeocode(atMatch[1], atMatch[2]);
       return;
     }
 
     const placeRegex = /place\/(-?\d+\.\d+),(-?\d+\.\d+)/;
     const placeMatch = mapsUrl.match(placeRegex);
     if (placeMatch) {
-      setLatitude(placeMatch[1]);
-      setLongitude(placeMatch[2]);
-      toast({ title: "Coordinates Extracted", description: `Parsed latitude/longitude from URL` });
+      performReverseGeocode(placeMatch[1], placeMatch[2]);
       return;
     }
 
     const queryRegex = /query=(-?\d+\.\d+),(-?\d+\.\d+)/;
     const queryMatch = mapsUrl.match(queryRegex);
     if (queryMatch) {
-      setLatitude(queryMatch[1]);
-      setLongitude(queryMatch[2]);
-      toast({ title: "Coordinates Extracted", description: `Parsed latitude/longitude from URL` });
+      performReverseGeocode(queryMatch[1], queryMatch[2]);
       return;
     }
 
     const floatRegex = /(-?\d+\.\d+)\s*,\s*(-?\d+\.\d+)/;
     const floatMatch = mapsUrl.match(floatRegex);
     if (floatMatch) {
-      setLatitude(floatMatch[1]);
-      setLongitude(floatMatch[2]);
-      toast({ title: "Coordinates Extracted", description: `Parsed coordinates from text` });
+      performReverseGeocode(floatMatch[1], floatMatch[2]);
       return;
     }
 
     // Fallback geocoding search (Plus code or Address string)
     setGpsLoading(true);
     try {
-      // Strip Google plus code prefix (like 79F2+G4V,) to make address geocodable
       let cleanQuery = mapsUrl.replace(/^[A-Z0-9]{4}\+[A-Z0-9]{2,4},\s*/i, "").trim();
 
       const tryGeocode = async (q: string) => {
@@ -430,29 +485,17 @@ export default function DrsmsScreeningPlaces() {
 
       let match = await tryGeocode(cleanQuery);
 
-      // Cascading fallback: if query fails, try dropping first segment (like "SH 48")
       if (!match && cleanQuery.includes(",")) {
         const parts = cleanQuery.split(",");
         if (parts.length > 1) {
-          const fallbackQuery = parts.slice(1).join(",").trim();
-          match = await tryGeocode(fallbackQuery);
-        }
-        if (!match && parts.length > 2) {
-          const fallbackQuery2 = parts.slice(parts.length - 2).join(",").trim();
-          match = await tryGeocode(fallbackQuery2);
-        }
-        if (!match && parts.length > 3) {
-          const fallbackQuery3 = parts.slice(parts.length - 1).join(",").trim();
-          match = await tryGeocode(fallbackQuery3);
+          match = await tryGeocode(parts.slice(1).join(",").trim());
         }
       }
 
       if (match) {
-        setLatitude(match.lat);
-        setLongitude(match.lon);
-        toast({ title: "Coordinates Extracted", description: `Geocoded successfully: ${match.display_name}` });
+        performReverseGeocode(match.lat, match.lon);
       } else {
-        throw new Error("No coordinates found. Try entering a simpler town/city name.");
+        throw new Error("No location found for this input string.");
       }
     } catch (err: any) {
       toast({ title: "Extraction Failed", description: err.message, variant: "destructive" });
