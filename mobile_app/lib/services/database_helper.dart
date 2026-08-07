@@ -149,7 +149,46 @@ class DatabaseHelper {
   Future<List<ScreeningPlaceModel>> getCachedScreeningPlaces() async {
     final prefs = await SharedPreferences.getInstance();
     final jsonList = prefs.getStringList('cached_screening_places') ?? [];
-    return jsonList.map((str) => ScreeningPlaceModel.fromJson(jsonDecode(str))).toList();
+    if (jsonList.isNotEmpty) {
+      return jsonList.map((str) => ScreeningPlaceModel.fromJson(jsonDecode(str))).toList();
+    }
+
+    // Default Fallback Camps if network is offline and cache is empty
+    return [
+      ScreeningPlaceModel(
+        id: 1,
+        name: "Ayanur Village Camp",
+        shortCode: "AYN01",
+        district: "Shivamogga",
+        state: "Karnataka",
+        taluk: "Shivamogga Rural",
+        pincode: "577211",
+        status: "active",
+        campDate: "2026-08-07",
+      ),
+      ScreeningPlaceModel(
+        id: 2,
+        name: "Shimoga Central Vision Camp",
+        shortCode: "SHM01",
+        district: "Shivamogga",
+        state: "Karnataka",
+        taluk: "Shivamogga Urban",
+        pincode: "577201",
+        status: "active",
+        campDate: "2026-08-07",
+      ),
+      ScreeningPlaceModel(
+        id: 3,
+        name: "Bhadravathi Outreach Camp",
+        shortCode: "BDVT01",
+        district: "Shivamogga",
+        state: "Karnataka",
+        taluk: "Bhadravathi",
+        pincode: "577301",
+        status: "active",
+        campDate: "2026-08-07",
+      ),
+    ];
   }
 
   Future<void> cacheVisionCenters(List<VisionCenterModel> centers) async {
