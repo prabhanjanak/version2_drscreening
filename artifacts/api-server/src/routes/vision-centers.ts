@@ -37,7 +37,7 @@ function parseCoordinates(mapsUrl: string): { latitude?: string; longitude?: str
 }
 
 // GET /api/vision-centers
-router.get("/vision-centers", requireAuth(), async (req, res) => {
+router.get("/vision-centers", async (req, res) => {
   try {
     const { sankaraUnit, state, district } = req.query;
     let query = db.select().from(visionCentersTable);

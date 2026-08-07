@@ -6,7 +6,7 @@ import { requireAuth } from "../middlewares/requireAuth";
 const router = Router();
 
 // GET /api/screening-places - Get all screening places
-router.get("/screening-places", requireAuth(), async (_req, res) => {
+router.get("/screening-places", async (_req, res) => {
   try {
     const places = await db.select().from(screeningPlacesTable).orderBy(screeningPlacesTable.name);
     res.json(places);
