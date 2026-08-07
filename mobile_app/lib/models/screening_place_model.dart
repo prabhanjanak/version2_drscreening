@@ -10,6 +10,8 @@ class ScreeningPlaceModel {
   final String status;
   final String? latitude;
   final String? longitude;
+  final String? campDate;
+  final String? mapLink;
 
   ScreeningPlaceModel({
     required this.id,
@@ -23,6 +25,8 @@ class ScreeningPlaceModel {
     required this.status,
     this.latitude,
     this.longitude,
+    this.campDate,
+    this.mapLink,
   });
 
   factory ScreeningPlaceModel.fromJson(Map<String, dynamic> json) {
@@ -38,6 +42,8 @@ class ScreeningPlaceModel {
       status: json['status'] ?? 'active',
       latitude: json['latitude'],
       longitude: json['longitude'],
+      campDate: json['campDate'] ?? json['camp_date'],
+      mapLink: json['mapLink'] ?? json['map_link'],
     );
   }
 
@@ -54,6 +60,8 @@ class ScreeningPlaceModel {
       'status': status,
       'latitude': latitude,
       'longitude': longitude,
+      'campDate': campDate,
+      'mapLink': mapLink,
     };
   }
 }

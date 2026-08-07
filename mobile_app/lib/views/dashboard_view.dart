@@ -9,6 +9,8 @@ import 'screening_entry_view.dart';
 import 'patient_list_view.dart';
 import 'vision_centers_view.dart';
 import 'facility_schedule_view.dart';
+import 'camps_management_view.dart';
+import 'users_management_view.dart';
 
 class DashboardView extends StatefulWidget {
   final UserModel user;
@@ -265,6 +267,18 @@ class _DashboardViewState extends State<DashboardView> {
                 children: [
                   _buildNavCard(
                     context,
+                    title: "Screening Camps",
+                    subtitle: "Manage Active Camps",
+                    icon: Icons.location_on_outlined,
+                    color: AppConstants.primaryOrange,
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => CampsManagementView(user: widget.user)),
+                      );
+                    },
+                  ),
+                  _buildNavCard(
+                    context,
                     title: "Patient Records",
                     subtitle: "Directory & History",
                     icon: Icons.assignment_outlined,
@@ -289,10 +303,22 @@ class _DashboardViewState extends State<DashboardView> {
                   ),
                   _buildNavCard(
                     context,
+                    title: "Staff Accounts",
+                    subtitle: "User Roles & Rights",
+                    icon: Icons.people_outline,
+                    color: Colors.teal,
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => UsersManagementView(currentUser: widget.user)),
+                      );
+                    },
+                  ),
+                  _buildNavCard(
+                    context,
                     title: "Facility Dispatch",
                     subtitle: "Camps & Vehicles",
                     icon: Icons.local_shipping_outlined,
-                    color: Colors.orange,
+                    color: Colors.indigo,
                     onTap: () {
                       Navigator.of(context).push(
                         MaterialPageRoute(builder: (_) => FacilityScheduleView(user: widget.user)),

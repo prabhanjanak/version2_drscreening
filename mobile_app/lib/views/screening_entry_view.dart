@@ -32,8 +32,11 @@ class _ScreeningEntryViewState extends State<ScreeningEntryView> {
   final _ageController = TextEditingController(text: "45");
   final _phoneController = TextEditingController();
   final _addressController = TextEditingController();
-  final _systolicBpController = TextEditingController(text: "120");
-  final _diastolicBpController = TextEditingController(text: "80");
+  final _systolicBpController = TextEditingController(text: "");
+  final _diastolicBpController = TextEditingController(text: "");
+  final _otherAdviceController = TextEditingController();
+  final _baseHospitalRemarksController = TextEditingController();
+  final _remarksController = TextEditingController();
 
   String _selectedGender = "Male";
   String _selectedDuration = "Newly Diagnosed";
@@ -198,7 +201,13 @@ class _ScreeningEntryViewState extends State<ScreeningEntryView> {
     final serialPadded = serialNo.toString().padLeft(4, '0');
     final uniqueId = "SEH/DR/$dateFormatted/$serialPadded";
 
-    final bpStr = "${_systolicBpController.text.trim()}/${_diastolicBpController.text.trim()}";
+    final bpStr = (_systolicBpController.text.trim().isNotEmpty || _diastolicBpController.text.trim().isNotEmpty)
+        ? "${_systolicBpController.text.trim()}/${_diastolicBpController.text.trim()}"
+        : null;
+
+    final adviceStr = (_selectedAdvice == "Others" && _otherAdviceController.text.trim().isNotEmpty)
+        ? "Others: ${_otherAdviceController.text.trim()}"
+        : _selectedAdvice;
 
     final patient = PatientModel(
       uniqueId: uniqueId,
@@ -213,11 +222,13 @@ class _ScreeningEntryViewState extends State<ScreeningEntryView> {
       diabetesDuration: _selectedDuration,
       bloodPressure: bpStr,
       drStatus: _selectedDrStatus,
-      advice: _selectedAdvice,
+      advice: adviceStr,
       imagePath: _base64Image ?? "placeholder_fundus.jpg",
       imageQuality: _imageQuality,
       referralStatus: _selectedDrStatus != "No DR" ? "Referred" : "Follow-up",
       referToBaseHospital: _referToBaseHospital,
+      baseHospitalRemarks: _referToBaseHospital ? _baseHospitalRemarksController.text.trim() : null,
+      remarks: _remarksController.text.trim().isNotEmpty ? _remarksController.text.trim() : null,
     );
 
     try {
@@ -497,6 +508,14 @@ class _ScreeningEntryViewState extends State<ScreeningEntryView> {
                       onSelect: (val) => setState(() => _selectedAdvice = val),
                     ),
 
+                    if (_selectedAdvice == "Others") ...[
+                      const SizedBox(height: 10),
+                      TextFormField(
+                        controller: _otherAdviceController,
+                        decoration: _buildInputDecoration("Specify Custom Advice *", Icons.edit_note),
+                      ),
+                    ],
+
                     const SizedBox(height: 12),
 
                     SwitchListTile(
@@ -505,6 +524,23 @@ class _ScreeningEntryViewState extends State<ScreeningEntryView> {
                       value: _referToBaseHospital,
                       activeThumbColor: AppConstants.primaryOrange,
                       onChanged: (val) => setState(() => _referToBaseHospital = val),
+                    ),
+
+                    if (_referToBaseHospital) ...[
+                      const SizedBox(height: 8),
+                      TextFormField(
+                        controller: _baseHospitalRemarksController,
+                        maxLines: 2,
+                        decoration: _buildInputDecoration("Base Hospital Referral Remarks / Notes", Icons.warning_amber),
+                      ),
+                    ],
+
+                    const SizedBox(height: 16),
+
+                    TextFormField(
+                      controller: _remarksController,
+                      maxLines: 2,
+                      decoration: _buildInputDecoration("General Screening Remarks / Clinical Notes", Icons.notes),
                     ),
 
                     const SizedBox(height: 24),

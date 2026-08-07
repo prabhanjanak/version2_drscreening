@@ -17,6 +17,8 @@ class PatientModel {
   final String imageQuality;
   final String referralStatus;
   final bool referToBaseHospital;
+  final String? baseHospitalRemarks;
+  final String? remarks;
   final bool isSynced;
 
   PatientModel({
@@ -38,6 +40,8 @@ class PatientModel {
     this.imageQuality = "Good",
     this.referralStatus = "Referred",
     this.referToBaseHospital = false,
+    this.baseHospitalRemarks,
+    this.remarks,
     this.isSynced = true,
   });
 
@@ -61,6 +65,8 @@ class PatientModel {
       imageQuality: json['imageQuality'] ?? 'Good',
       referralStatus: json['referralStatus'] ?? 'Referred',
       referToBaseHospital: json['referToBaseHospital'] == true || json['referToBaseHospital'] == 1,
+      baseHospitalRemarks: json['baseHospitalRemarks'],
+      remarks: json['remarks'],
       isSynced: json['isSynced'] == 1 || json['isSynced'] == true,
     );
   }
@@ -85,6 +91,8 @@ class PatientModel {
       'imageQuality': imageQuality,
       'referralStatus': referralStatus,
       'referToBaseHospital': referToBaseHospital,
+      'baseHospitalRemarks': baseHospitalRemarks,
+      'remarks': remarks,
       'isSynced': isSynced ? 1 : 0,
     };
   }

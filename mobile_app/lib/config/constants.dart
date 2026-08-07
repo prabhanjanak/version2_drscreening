@@ -62,6 +62,7 @@ class AppConstants {
     "Refer to Base Hospital",
     "Laser Photocoagulation",
     "Intravitreal Injection",
-    "Vitreoretinal Surgery"
+    "Vitreoretinal Surgery",
+    "Others"
   ];
 }

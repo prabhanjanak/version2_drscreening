@@ -200,4 +200,172 @@ class ApiService {
 
     return response.statusCode == 201 || response.statusCode == 200;
   }
+
+  // ──── SCREENING PLACES / CAMPS CRUD ────
+
+  static Future<ScreeningPlaceModel> createScreeningPlace(Map<String, dynamic> data) async {
+    final baseUrl = await getBaseUrl();
+    final response = await http.post(
+      Uri.parse('$baseUrl/screening-places'),
+      headers: await _getHeaders(),
+      body: jsonEncode(data),
+    );
+
+    if (response.statusCode == 201 || response.statusCode == 200) {
+      final json = jsonDecode(response.body);
+      return ScreeningPlaceModel.fromJson(json);
+    } else {
+      final err = jsonDecode(response.body);
+      throw Exception(err['error'] ?? 'Failed to create screening camp');
+    }
+  }
+
+  static Future<ScreeningPlaceModel> updateScreeningPlace(int id, Map<String, dynamic> data) async {
+    final baseUrl = await getBaseUrl();
+    final response = await http.put(
+      Uri.parse('$baseUrl/screening-places/$id'),
+      headers: await _getHeaders(),
+      body: jsonEncode(data),
+    );
+
+    if (response.statusCode == 200) {
+      final json = jsonDecode(response.body);
+      return ScreeningPlaceModel.fromJson(json);
+    } else {
+      final err = jsonDecode(response.body);
+      throw Exception(err['error'] ?? 'Failed to update screening camp');
+    }
+  }
+
+  static Future<bool> deleteScreeningPlace(int id) async {
+    final baseUrl = await getBaseUrl();
+    final response = await http.delete(
+      Uri.parse('$baseUrl/screening-places/$id'),
+      headers: await _getHeaders(),
+    );
+
+    if (response.statusCode == 200) {
+      return true;
+    } else {
+      final err = jsonDecode(response.body);
+      throw Exception(err['error'] ?? 'Failed to delete camp');
+    }
+  }
+
+  // ──── SYSTEM USERS / STAFF CRUD ────
+
+  static Future<List<UserModel>> fetchSystemUsers() async {
+    final baseUrl = await getBaseUrl();
+    final response = await http.get(
+      Uri.parse('$baseUrl/system-users'),
+      headers: await _getHeaders(),
+    );
+
+    if (response.statusCode == 200) {
+      final List data = jsonDecode(response.body);
+      return data.map((json) => UserModel.fromJson(json)).toList();
+    } else {
+      throw Exception('Failed to fetch system users');
+    }
+  }
+
+  static Future<UserModel> createSystemUser(Map<String, dynamic> data) async {
+    final baseUrl = await getBaseUrl();
+    final response = await http.post(
+      Uri.parse('$baseUrl/system-users'),
+      headers: await _getHeaders(),
+      body: jsonEncode(data),
+    );
+
+    if (response.statusCode == 201 || response.statusCode == 200) {
+      final json = jsonDecode(response.body);
+      return UserModel.fromJson(json);
+    } else {
+      final err = jsonDecode(response.body);
+      throw Exception(err['error'] ?? 'Failed to create user account');
+    }
+  }
+
+  static Future<UserModel> updateSystemUser(int id, Map<String, dynamic> data) async {
+    final baseUrl = await getBaseUrl();
+    final response = await http.patch(
+      Uri.parse('$baseUrl/system-users/$id'),
+      headers: await _getHeaders(),
+      body: jsonEncode(data),
+    );
+
+    if (response.statusCode == 200) {
+      final json = jsonDecode(response.body);
+      return UserModel.fromJson(json);
+    } else {
+      final err = jsonDecode(response.body);
+      throw Exception(err['error'] ?? 'Failed to update user account');
+    }
+  }
+
+  static Future<bool> deleteSystemUser(int id) async {
+    final baseUrl = await getBaseUrl();
+    final response = await http.delete(
+      Uri.parse('$baseUrl/system-users/$id'),
+      headers: await _getHeaders(),
+    );
+
+    if (response.statusCode == 200) {
+      return true;
+    } else {
+      final err = jsonDecode(response.body);
+      throw Exception(err['error'] ?? 'Failed to delete user account');
+    }
+  }
+
+  // ──── VISION CENTERS CRUD ────
+
+  static Future<VisionCenterModel> createVisionCenter(Map<String, dynamic> data) async {
+    final baseUrl = await getBaseUrl();
+    final response = await http.post(
+      Uri.parse('$baseUrl/vision-centers'),
+      headers: await _getHeaders(),
+      body: jsonEncode(data),
+    );
+
+    if (response.statusCode == 201 || response.statusCode == 200) {
+      final json = jsonDecode(response.body);
+      return VisionCenterModel.fromJson(json);
+    } else {
+      final err = jsonDecode(response.body);
+      throw Exception(err['error'] ?? 'Failed to create Vision Center');
+    }
+  }
+
+  static Future<VisionCenterModel> updateVisionCenter(int id, Map<String, dynamic> data) async {
+    final baseUrl = await getBaseUrl();
+    final response = await http.put(
+      Uri.parse('$baseUrl/vision-centers/$id'),
+      headers: await _getHeaders(),
+      body: jsonEncode(data),
+    );
+
+    if (response.statusCode == 200) {
+      final json = jsonDecode(response.body);
+      return VisionCenterModel.fromJson(json);
+    } else {
+      final err = jsonDecode(response.body);
+      throw Exception(err['error'] ?? 'Failed to update Vision Center');
+    }
+  }
+
+  static Future<bool> deleteVisionCenter(int id) async {
+    final baseUrl = await getBaseUrl();
+    final response = await http.delete(
+      Uri.parse('$baseUrl/vision-centers/$id'),
+      headers: await _getHeaders(),
+    );
+
+    if (response.statusCode == 200) {
+      return true;
+    } else {
+      final err = jsonDecode(response.body);
+      throw Exception(err['error'] ?? 'Failed to delete Vision Center');
+    }
+  }
 }
