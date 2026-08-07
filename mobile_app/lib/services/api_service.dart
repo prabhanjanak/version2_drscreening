@@ -13,10 +13,6 @@ class ApiService {
     final prefs = await SharedPreferences.getInstance();
     final saved = prefs.getString('api_base_url');
     if (saved != null && saved.isNotEmpty) {
-      if (saved.contains('10.0.2.2') || saved.contains('localhost') || saved.contains('127.0.0.1') || saved.contains('192.168.')) {
-        await prefs.setString('api_base_url', AppConstants.defaultApiBaseUrl);
-        return AppConstants.defaultApiBaseUrl;
-      }
       return saved;
     }
 
@@ -133,7 +129,7 @@ class ApiService {
       final response = await http.get(
         Uri.parse('$baseUrl/screening-places'),
         headers: await _getHeaders(),
-      ).timeout(const Duration(seconds: 4));
+      ).timeout(const Duration(seconds: 12));
 
       if (response.statusCode == 200) {
         final List data = jsonDecode(response.body);
@@ -142,7 +138,7 @@ class ApiService {
         return places;
       }
     } catch (e) {
-      print('Network offline for camps, returning cached list');
+      print('Network offline for camps, returning cached list: $e');
     }
 
     return await DatabaseHelper.instance.getCachedScreeningPlaces();
