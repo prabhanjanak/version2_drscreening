@@ -126,19 +126,26 @@ class ApiService {
   static Future<List<ScreeningPlaceModel>> fetchScreeningPlaces() async {
     try {
       final baseUrl = await getBaseUrl();
+      final headers = await _getHeaders();
+      print('Fetching camps from: $baseUrl/screening-places with headers: $headers');
+      
       final response = await http.get(
         Uri.parse('$baseUrl/screening-places'),
-        headers: await _getHeaders(),
-      ).timeout(const Duration(seconds: 12));
+        headers: headers,
+      ).timeout(const Duration(seconds: 15));
+
+      print('Camps API HTTP status: ${response.statusCode}');
 
       if (response.statusCode == 200) {
         final List data = jsonDecode(response.body);
         final places = data.map((json) => ScreeningPlaceModel.fromJson(json)).toList();
         await DatabaseHelper.instance.cacheScreeningPlaces(places);
         return places;
+      } else {
+        print('Failed to fetch camps from production server. Code: ${response.statusCode}, Body: ${response.body}');
       }
     } catch (e) {
-      print('Network offline for camps, returning cached list: $e');
+      print('Error fetching camps from production server: $e');
     }
 
     return await DatabaseHelper.instance.getCachedScreeningPlaces();

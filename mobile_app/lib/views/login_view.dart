@@ -24,15 +24,25 @@ class _LoginViewState extends State<LoginView> {
     setState(() => _isLoading = true);
 
     try {
+      final currentUrl = await ApiService.getBaseUrl();
+      if (currentUrl.contains('localhost') || currentUrl.contains('127.0.0.1') || currentUrl.contains('10.0.2.2')) {
+        await ApiService.setBaseUrl(AppConstants.defaultApiBaseUrl);
+      }
+
       final user = await ApiService.login(
         _empIdController.text.trim(),
         _passwordController.text.trim(),
       );
 
       if (mounted && user != null) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => DashboardView(user: user)),
-        );
+        // Fetch fresh production camps immediately
+        await ApiService.fetchScreeningPlaces();
+        
+        if (mounted) {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => DashboardView(user: user)),
+          );
+        }
       }
     } catch (e) {
       if (mounted) {
