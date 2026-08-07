@@ -141,6 +141,21 @@ class ApiService {
         final places = data.map((json) => ScreeningPlaceModel.fromJson(json)).toList();
         await DatabaseHelper.instance.cacheScreeningPlaces(places);
         return places;
+      } else if (response.statusCode == 401) {
+        print('Production server returned 401 (expired token). Retrying unauthenticated request...');
+        final retryResponse = await http.get(
+          Uri.parse('$baseUrl/screening-places'),
+          headers: {'Content-Type': 'application/json'},
+        ).timeout(const Duration(seconds: 15));
+
+        if (retryResponse.statusCode == 200) {
+          final List data = jsonDecode(retryResponse.body);
+          final places = data.map((json) => ScreeningPlaceModel.fromJson(json)).toList();
+          await DatabaseHelper.instance.cacheScreeningPlaces(places);
+          return places;
+        } else {
+          print('Retry without token also failed. Code: ${retryResponse.statusCode}, Body: ${retryResponse.body}');
+        }
       } else {
         print('Failed to fetch camps from production server. Code: ${response.statusCode}, Body: ${response.body}');
       }
