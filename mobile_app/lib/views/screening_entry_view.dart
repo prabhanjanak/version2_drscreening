@@ -58,12 +58,12 @@ class _ScreeningEntryViewState extends State<ScreeningEntryView> {
   Future<void> _fetchCamps() async {
     try {
       final camps = await ApiService.fetchScreeningPlaces();
-      final activeCamps = camps.where((c) => c.status == 'active').toList();
       if (mounted) {
         setState(() {
-          _camps = activeCamps.isNotEmpty ? activeCamps : camps;
+          _camps = camps;
           if (_camps.isNotEmpty) {
-            _selectedCamp = _camps.first;
+            final active = _camps.where((c) => c.status == 'active').toList();
+            _selectedCamp = active.isNotEmpty ? active.first : _camps.first;
           }
           _loadingCamps = false;
         });
@@ -73,11 +73,69 @@ class _ScreeningEntryViewState extends State<ScreeningEntryView> {
       if (mounted) {
         setState(() {
           _camps = cached;
-          if (cached.isNotEmpty) _selectedCamp = cached.first;
+          if (cached.isNotEmpty) {
+            final active = cached.where((c) => c.status == 'active').toList();
+            _selectedCamp = active.isNotEmpty ? active.first : cached.first;
+          }
           _loadingCamps = false;
         });
       }
     }
+  }
+
+  void _openCampSelectorSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.all(16),
+          height: MediaQuery.of(context).size.height * 0.7,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text("Select Active Screening Camp", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppConstants.navyDark)),
+                  IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
+                ],
+              ),
+              const Divider(),
+              Expanded(
+                child: ListView.builder(
+                  itemCount: _camps.length,
+                  itemBuilder: (context, index) {
+                    final camp = _camps[index];
+                    final isSelected = _selectedCamp?.id == camp.id;
+                    return Card(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      color: isSelected ? AppConstants.primaryOrange.withValues(alpha: 0.1) : Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        side: BorderSide(color: isSelected ? AppConstants.primaryOrange : AppConstants.borderLight),
+                      ),
+                      child: ListTile(
+                        title: Text("${camp.name} (${camp.shortCode})", style: const TextStyle(fontWeight: FontWeight.bold)),
+                        subtitle: Text("Taluk: ${camp.taluk ?? 'Shimoga Rural'} • Pincode: ${camp.pincode ?? '577211'}${camp.campDate != null ? ' • 📅 ${camp.campDate}' : ''}"),
+                        trailing: isSelected ? const Icon(Icons.check_circle, color: AppConstants.primaryOrange) : null,
+                        onTap: () {
+                          setState(() => _selectedCamp = camp);
+                          Navigator.pop(context);
+                        },
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   Future<void> _pickImage(ImageSource source) async {
@@ -288,31 +346,45 @@ class _ScreeningEntryViewState extends State<ScreeningEntryView> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Active Camp Selector Card
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: AppConstants.borderLight),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text("ACTIVE CAMP SESSION", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppConstants.textMuted)),
-                          const SizedBox(height: 4),
-                          DropdownButtonFormField<ScreeningPlaceModel>(
-                            initialValue: _selectedCamp,
-                            decoration: const InputDecoration(border: InputBorder.none, contentPadding: EdgeInsets.zero),
-                            items: _camps.map((camp) {
-                              return DropdownMenuItem(
-                                value: camp,
-                                child: Text("${camp.name} (${camp.shortCode})", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                              );
-                            }).toList(),
-                            onChanged: (val) => setState(() => _selectedCamp = val),
-                          ),
-                        ],
+                    // Active Camp Selector Card (Touchable)
+                    InkWell(
+                      onTap: _openCampSelectorSheet,
+                      borderRadius: BorderRadius.circular(14),
+                      child: Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: AppConstants.primaryOrange, width: 1.5),
+                          boxShadow: [
+                            BoxShadow(color: AppConstants.primaryOrange.withValues(alpha: 0.1), blurRadius: 6),
+                          ],
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.location_on, color: AppConstants.primaryOrange, size: 28),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text("ACTIVE CAMP SESSION (TAP TO CHANGE)", style: TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: AppConstants.primaryOrange, letterSpacing: 0.5)),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    _selectedCamp != null ? "${_selectedCamp!.name} (${_selectedCamp!.shortCode})" : "Select Camp Session",
+                                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: AppConstants.navyDark),
+                                  ),
+                                  if (_selectedCamp != null)
+                                    Text(
+                                      "Taluk: ${_selectedCamp!.taluk ?? 'Shimoga Rural'} • Pin: ${_selectedCamp!.pincode ?? '577211'}${_selectedCamp!.campDate != null ? ' • Date: ${_selectedCamp!.campDate}' : ''}",
+                                      style: const TextStyle(fontSize: 11, color: AppConstants.textMuted),
+                                    ),
+                                ],
+                              ),
+                            ),
+                            const Icon(Icons.arrow_drop_down, color: AppConstants.navyDark, size: 28),
+                          ],
+                        ),
                       ),
                     ),
 

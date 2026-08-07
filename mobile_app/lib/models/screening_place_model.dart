@@ -64,4 +64,15 @@ class ScreeningPlaceModel {
       'mapLink': mapLink,
     };
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ScreeningPlaceModel &&
+          runtimeType == other.runtimeType &&
+          id == other.id &&
+          shortCode == other.shortCode;
+
+  @override
+  int get hashCode => id.hashCode ^ shortCode.hashCode;
 }
