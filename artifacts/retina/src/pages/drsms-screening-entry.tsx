@@ -22,16 +22,29 @@ const screeningFormSchema = z.object({
   gender: z.string().min(1, "Gender is required"),
   address: z.string().optional().default(""),
   phone: z.string().min(10, "Phone number must be at least 10 digits"),
+  alternatePhone: z.string().optional().default(""),
+  referralSource: z.string().default("ASHA Worker / ANM Outreach"),
   diabetesDuration: z.string().min(1, "Duration of diabetes is required"),
+  diabetesMeasureType: z.string().default("GRBS (mg/dL)"),
+  diabetesMeasureValue: z.string().optional().default(""),
+  grbsRecordedBy: z.string().default("CHC / PHC Staff"),
+  chcPhcCenterName: z.string().optional().default(""),
   systolicBP: z.string().optional().default(""),
   diastolicBP: z.string().optional().default(""),
   drStatus: z.string().min(1, "DR Status is required"),
+  hasCataract: z.string().default("None"),
+  cataractPlanning: z.string().optional().default(""),
+  fundusCaptured: z.boolean().default(true),
+  fundusNotCapturedReason: z.string().optional().default(""),
   advice: z.string().min(1, "Advice is required"),
   imageQuality: z.string().default("Good"),
   referToBaseHospital: z.boolean().default(false),
   baseHospitalRemarks: z.string().optional().default(""),
   otherAdvice: z.string().optional().default(""),
   remarks: z.string().optional().default(""),
+  referredToGiftOfVision: z.boolean().default(false),
+  giftOfVisionNotes: z.string().optional().default(""),
+  govtSchemes: z.array(z.string()).default([]),
   latitude: z.string().optional(),
   longitude: z.string().optional(),
 });
@@ -39,6 +52,66 @@ const screeningFormSchema = z.object({
 type FormValues = z.infer<typeof screeningFormSchema>;
 
 const GENDER_OPTIONS = ["Male", "Female", "Other"];
+
+const REFERRAL_SOURCE_OPTIONS = [
+  "ASHA Worker / ANM Outreach",
+  "Vision Center / PHC / CHC",
+  "Gram Panchayat Announcement (Tandora)",
+  "Pamphlet / Poster / Banner",
+  "Family / Friends / Word of Mouth",
+  "Previous Camp Attendee",
+  "Doctor / Hospital Referral",
+  "Other / Walk-in",
+];
+
+const DIABETES_MEASURE_TYPES = [
+  "GRBS (mg/dL)",
+  "RBS (mg/dL)",
+  "FBS (Fasting)",
+  "PPBS (Postprandial)",
+  "HbA1c (%)",
+];
+
+const GRBS_STAFF_OPTIONS = [
+  "CHC / PHC Staff",
+  "ASHA / ANM Worker",
+  "Camp Lab Technician",
+  "Optometrist / Screener",
+];
+
+const CATARACT_OPTIONS = [
+  "None",
+  "Immature Cataract",
+  "Mature Cataract",
+  "Hypermature Cataract",
+];
+
+const CATARACT_PLANNING_OPTIONS = [
+  "Scheduled for Next Cataract Camp",
+  "Base Hospital Surgery Referred",
+  "Transport Required to Sankara",
+  "Counseling Completed",
+];
+
+const FUNDUS_NOT_CAPTURED_REASONS = [
+  "Pupil not dilated",
+  "Dense Cataract / Media Opacity",
+  "Patient uncooperative",
+  "Remidio at Base Hospital",
+  "Equipment issue / Power outage",
+];
+
+const KARNATAKA_SCHEMES_OPTIONS = [
+  "Ayushman Bharat - Arogya Karnataka (AB-ArK)",
+  "BPL Card (Below Poverty Line)",
+  "APL Card (Above Poverty Line)",
+  "E-Shram Card",
+  "Yeshasvini Health Insurance Scheme",
+  "Senior Citizen Card / Sandhya Suraksha",
+  "Sankara Gift of Vision Sponsorship",
+  "Private Health Insurance",
+  "None / General Self-Pay",
+];
 
 const DIABETES_DURATION_OPTIONS = [
   "No Diabetes",
@@ -185,16 +258,29 @@ export default function DrsmsScreeningEntry() {
       gender: "Male",
       address: "",
       phone: "",
+      alternatePhone: "",
+      referralSource: "ASHA Worker / ANM Outreach",
       diabetesDuration: "Newly Diagnosed",
+      diabetesMeasureType: "GRBS (mg/dL)",
+      diabetesMeasureValue: "",
+      grbsRecordedBy: "CHC / PHC Staff",
+      chcPhcCenterName: "",
       systolicBP: "",
       diastolicBP: "",
       drStatus: "No DR",
+      hasCataract: "None",
+      cataractPlanning: "",
+      fundusCaptured: true,
+      fundusNotCapturedReason: "",
       advice: "Annual Review",
       imageQuality: "Good",
       referToBaseHospital: false,
       baseHospitalRemarks: "",
       otherAdvice: "",
       remarks: "",
+      referredToGiftOfVision: false,
+      giftOfVisionNotes: "",
+      govtSchemes: [],
       latitude: "",
       longitude: "",
     }
@@ -554,9 +640,19 @@ export default function DrsmsScreeningEntry() {
           gender: values.gender,
           address: values.address,
           phone: values.phone,
+          alternatePhone: values.alternatePhone,
+          referralSource: values.referralSource,
           diabetesDuration: values.diabetesDuration,
+          diabetesMeasureType: values.diabetesMeasureType,
+          diabetesMeasureValue: values.diabetesMeasureValue,
+          grbsRecordedBy: values.grbsRecordedBy,
+          chcPhcCenterName: values.chcPhcCenterName,
           bloodPressure: bloodPressureStr,
           drStatus: values.drStatus,
+          hasCataract: values.hasCataract,
+          cataractPlanning: values.cataractPlanning,
+          fundusCaptured: values.fundusCaptured,
+          fundusNotCapturedReason: values.fundusNotCapturedReason,
           advice: values.advice === "Others" && values.otherAdvice?.trim() ? `Others: ${values.otherAdvice.trim()}` : values.advice,
           imagePath: remoteImagePath,
           imageQuality: values.imageQuality,
@@ -566,6 +662,9 @@ export default function DrsmsScreeningEntry() {
           referToBaseHospital: values.referToBaseHospital,
           baseHospitalRemarks: values.baseHospitalRemarks,
           remarks: values.remarks,
+          referredToGiftOfVision: values.referredToGiftOfVision,
+          giftOfVisionNotes: values.giftOfVisionNotes,
+          govtSchemes: values.govtSchemes,
         })
       });
 
@@ -575,9 +674,9 @@ export default function DrsmsScreeningEntry() {
       }
 
       const resData = await res.json().catch(() => ({}));
-      const createdPatientId = resData.patient?.id;
 
-      if (appliedReferralId && createdPatientId) {
+      // If this screening was populated from an Ophthalmic/ASHA referral, auto-convert the referral
+      if (appliedReferralId) {
         try {
           await fetch(`/api/vc-referrals/${appliedReferralId}/convert`, {
             method: "PATCH",
@@ -585,15 +684,15 @@ export default function DrsmsScreeningEntry() {
               "Content-Type": "application/json",
               Authorization: `Bearer ${token}`
             },
-            body: JSON.stringify({ patientId: createdPatientId })
+            body: JSON.stringify({ convertedPatientId: resData?.patient?.id })
           });
-        } catch (err) {
-          console.error("Failed to convert referral:", err);
+          setAppliedReferralId(null);
+        } catch (convErr) {
+          console.error("Auto-convert referral error:", convErr);
         }
-        setAppliedReferralId(null);
       }
 
-      offlineDB.clearDraft();
+      await offlineDB.clearDraft();
       setImageFile(null);
       setImagePreview(null);
       reset({
@@ -604,20 +703,36 @@ export default function DrsmsScreeningEntry() {
         gender: "Male",
         address: "",
         phone: "",
+        alternatePhone: "",
+        referralSource: "ASHA Worker / ANM Outreach",
         diabetesDuration: "Newly Diagnosed",
-        systolicBP: "120",
-        diastolicBP: "80",
+        diabetesMeasureType: "GRBS (mg/dL)",
+        diabetesMeasureValue: "",
+        grbsRecordedBy: "CHC / PHC Staff",
+        chcPhcCenterName: "",
+        systolicBP: "",
+        diastolicBP: "",
         drStatus: "No DR",
+        hasCataract: "None",
+        cataractPlanning: "",
+        fundusCaptured: true,
+        fundusNotCapturedReason: "",
         advice: "Annual Review",
         imageQuality: "Good",
         referToBaseHospital: false,
         baseHospitalRemarks: "",
         otherAdvice: "",
         remarks: "",
+        referredToGiftOfVision: false,
+        giftOfVisionNotes: "",
+        govtSchemes: [],
         latitude: "",
         longitude: ""
       });
-      toast({ title: "Patient Screened", description: `Patient records successfully saved for camp date ${campEffectiveDate}.` });
+      toast({ 
+        title: "Patient Screened Successfully! 🩺", 
+        description: `Saved to camp ${activeCampCode} on ${campEffectiveDate}. ID: ${resData?.patient?.uniqueId || ""}` 
+      });
     } catch (err: any) {
       toast({ title: "Submission Failed", description: err.message, variant: "destructive" });
     } finally {
@@ -642,6 +757,14 @@ export default function DrsmsScreeningEntry() {
     setValue(name as any, value);
     const formValues = watch();
     offlineDB.saveDraft({ ...formValues, imagePath: imagePreview || undefined });
+  };
+
+  const toggleGovtScheme = (scheme: string) => {
+    const current = watch("govtSchemes") || [];
+    const updated = current.includes(scheme)
+      ? current.filter((s: string) => s !== scheme)
+      : [...current, scheme];
+    handleFieldChange("govtSchemes", updated);
   };
 
   // Filter places based on search query
@@ -770,15 +893,20 @@ export default function DrsmsScreeningEntry() {
       </div>
 
       <form onSubmit={handleSubmit(onSubmit, onInvalidSubmit)} className="space-y-6 max-w-3xl mx-auto">
-        {/* Section 1: Demographics */}
+        
+        {/* ========================================================================= */}
+        {/* STATION 1: PATIENT REGISTRATION & AWARENESS INTAKE                       */}
+        {/* ========================================================================= */}
         <Card className="rounded-xl border border-slate-200 shadow-sm bg-white overflow-hidden">
           <CardHeader className="bg-gradient-to-r from-orange-500/10 to-[#FF6B00]/5 py-3.5 border-b border-slate-100">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <User className="h-4.5 w-4.5 text-[#FF6B00]" />
+                <span className="h-6 w-6 rounded-full bg-[#FF6B00] text-white text-xs font-black flex items-center justify-center">1</span>
                 <div>
-                  <CardTitle className="text-xs font-bold text-slate-800 uppercase tracking-wider">Section 1: Patient Demographics</CardTitle>
-                  <CardDescription className="text-[10px]">Primary metrics locked to Camp Date: <strong className="text-slate-800">{activeCampDate}</strong></CardDescription>
+                  <CardTitle className="text-xs font-black text-slate-900 uppercase tracking-wider">
+                    Station 1: Patient Registration & Referral Source
+                  </CardTitle>
+                  <CardDescription className="text-[10px]">Demographic details, awareness referral source & government scheme eligibility.</CardDescription>
                 </div>
               </div>
               {serialInfo?.uniqueId && (
@@ -792,15 +920,16 @@ export default function DrsmsScreeningEntry() {
             </div>
           </CardHeader>
           <CardContent className="p-4 md:p-6 space-y-4 text-xs">
+            
             {/* Patient Name */}
             <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Patient Full Name *</label>
+              <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">Patient Full Name *</label>
               <input
                 type="text"
                 placeholder="Enter patient full name"
                 {...register("patientName")}
                 onChange={(e) => handleFieldChange("patientName", e.target.value)}
-                className="w-full text-xs border border-slate-300 p-2.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B00]"
+                className="w-full text-xs border border-slate-300 p-2.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B00] font-semibold"
               />
               {errors.patientName && <p className="text-red-500 text-[10px] mt-1">{errors.patientName.message}</p>}
             </div>
@@ -808,7 +937,7 @@ export default function DrsmsScreeningEntry() {
             {/* Age & Gender */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Age (Years) *</label>
+                <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">Age (Years) *</label>
                 <input
                   type="number"
                   inputMode="numeric"
@@ -816,13 +945,13 @@ export default function DrsmsScreeningEntry() {
                   placeholder="e.g. 45"
                   {...register("age")}
                   onChange={(e) => handleFieldChange("age", e.target.value)}
-                  className="w-full text-xs border border-slate-300 p-2.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B00]"
+                  className="w-full text-xs border border-slate-300 p-2.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B00] font-semibold"
                 />
                 {errors.age && <p className="text-red-500 text-[10px] mt-1">{errors.age.message}</p>}
               </div>
 
               <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">Gender *</label>
+                <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1.5">Gender *</label>
                 <div className="flex gap-2">
                   {GENDER_OPTIONS.map((g) => {
                     const currentGender = watch("gender");
@@ -834,7 +963,7 @@ export default function DrsmsScreeningEntry() {
                         onClick={() => handleFieldChange("gender", g)}
                         className={`flex-1 py-2 text-xs font-bold rounded-xl border transition-all text-center ${
                           active 
-                            ? "bg-orange-500 border-[#FF6B00] text-white shadow-sm" 
+                            ? "bg-[#FF6B00] border-[#FF6B00] text-white shadow-sm" 
                             : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
                         }`}
                       >
@@ -847,10 +976,10 @@ export default function DrsmsScreeningEntry() {
               </div>
             </div>
 
-            {/* Phone & Address */}
+            {/* Primary Phone & Alternate Phone */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Phone Number (10 Digits) *</label>
+                <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">Primary Mobile Number (10 Digits) *</label>
                 <input
                   type="tel"
                   inputMode="numeric"
@@ -858,7 +987,7 @@ export default function DrsmsScreeningEntry() {
                   placeholder="Enter 10-digit mobile number"
                   {...register("phone")}
                   onChange={(e) => handleFieldChange("phone", e.target.value)}
-                  className="w-full text-xs border border-slate-300 p-2.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B00]"
+                  className="w-full text-xs border border-slate-300 p-2.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B00] font-semibold"
                 />
                 {errors.phone && <p className="text-red-500 text-[10px] mt-1">{errors.phone.message}</p>}
                 {duplicateWarning && (
@@ -870,35 +999,133 @@ export default function DrsmsScreeningEntry() {
               </div>
 
               <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Address / Village *</label>
+                <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">
+                  Alternate Mobile Number (Optional - Attendant / Relative)
+                </label>
                 <input
-                  type="text"
-                  placeholder="Village, town name"
-                  {...register("address")}
-                  onChange={(e) => handleFieldChange("address", e.target.value)}
+                  type="tel"
+                  inputMode="numeric"
+                  placeholder="Optional alternate / family phone number"
+                  {...register("alternatePhone")}
+                  onChange={(e) => handleFieldChange("alternatePhone", e.target.value)}
                   className="w-full text-xs border border-slate-300 p-2.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B00]"
                 />
-                {errors.address && <p className="text-red-500 text-[10px] mt-1">{errors.address.message}</p>}
               </div>
             </div>
+
+            {/* Address & Village */}
+            <div>
+              <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">Address / Village / Taluk *</label>
+              <input
+                type="text"
+                placeholder="Enter village, street, town or taluk name"
+                {...register("address")}
+                onChange={(e) => handleFieldChange("address", e.target.value)}
+                className="w-full text-xs border border-slate-300 p-2.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B00]"
+              />
+              {errors.address && <p className="text-red-500 text-[10px] mt-1">{errors.address.message}</p>}
+            </div>
+
+            {/* Referral / Awareness Source */}
+            <div className="bg-orange-50/40 p-3.5 rounded-xl border border-orange-100 space-y-2">
+              <label className="block text-[11px] font-black text-orange-950 uppercase flex items-center gap-1.5">
+                📢 How did the patient learn about this DR Camp? (Referral Source)
+              </label>
+              <select
+                value={watch("referralSource")}
+                onChange={(e) => handleFieldChange("referralSource", e.target.value)}
+                className="w-full text-xs border border-orange-200 p-2.5 rounded-lg bg-white outline-none focus:ring-2 focus:ring-[#FF6B00] font-semibold text-slate-800"
+              >
+                {REFERRAL_SOURCE_OPTIONS.map((src) => (
+                  <option key={src} value={src}>{src}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Karnataka Govt Schemes / Insurance Eligibility */}
+            <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-2">
+              <label className="block text-[11px] font-black text-slate-800 uppercase">
+                🏛️ Government Provided Facilities & Insurance Schemes (Karnataka)
+              </label>
+              <p className="text-[10px] text-slate-500">Select all scheme cards or benefits the patient currently holds:</p>
+              <div className="flex flex-wrap gap-1.5">
+                {KARNATAKA_SCHEMES_OPTIONS.map((scheme) => {
+                  const selectedSchemes = watch("govtSchemes") || [];
+                  const isSelected = selectedSchemes.includes(scheme);
+                  return (
+                    <button
+                      key={scheme}
+                      type="button"
+                      onClick={() => toggleGovtScheme(scheme)}
+                      className={`text-[10px] font-bold px-2.5 py-1.5 rounded-lg border transition-all ${
+                        isSelected 
+                          ? "bg-emerald-600 border-emerald-600 text-white shadow-2xs" 
+                          : "bg-white border-slate-200 text-slate-700 hover:bg-slate-100"
+                      }`}
+                    >
+                      {isSelected ? "✓ " : "+ "}{scheme}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Referred to Gift of Vision Free Sponsorship */}
+            <div className="bg-emerald-50/60 border border-emerald-200 p-3.5 rounded-xl space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <p className="text-xs font-black text-emerald-950 flex items-center gap-1.5">
+                    🎁 Referred to Gift of Vision (Free Sankara Eye Foundation Sponsorship)
+                  </p>
+                  <p className="text-[10px] text-emerald-700">
+                    Flag patient for 100% free surgical care, food, and transport sponsorship under Gift of Vision.
+                  </p>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={watch("referredToGiftOfVision")}
+                  onChange={(e) => handleFieldChange("referredToGiftOfVision", e.target.checked)}
+                  className="h-5 w-5 rounded-md border-emerald-300 text-emerald-600 focus:ring-emerald-500 bg-white cursor-pointer"
+                />
+              </div>
+
+              {watch("referredToGiftOfVision") && (
+                <div className="pt-2 border-t border-emerald-200 space-y-1">
+                  <input
+                    type="text"
+                    placeholder="Enter Gift of Vision sponsorship notes (e.g. BPL beneficiary, village transport arranged)..."
+                    value={watch("giftOfVisionNotes") || ""}
+                    onChange={(e) => handleFieldChange("giftOfVisionNotes", e.target.value)}
+                    className="w-full text-xs border border-emerald-300 p-2 rounded-lg bg-white outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
+                  />
+                </div>
+              )}
+            </div>
+
           </CardContent>
         </Card>
 
-        {/* Section 2: Clinical Assessment */}
+        {/* ========================================================================= */}
+        {/* STATION 2: CHC / PHC LAB & DIABETIC VITALS STATION                        */}
+        {/* ========================================================================= */}
         <Card className="rounded-xl border border-slate-200 shadow-sm bg-white overflow-hidden">
           <CardHeader className="bg-gradient-to-r from-orange-500/10 to-[#FF6B00]/5 py-3.5 border-b border-slate-100">
             <div className="flex items-center gap-2">
-              <Heart className="h-4.5 w-4.5 text-[#FF6B00]" />
+              <span className="h-6 w-6 rounded-full bg-[#FF6B00] text-white text-xs font-black flex items-center justify-center">2</span>
               <div>
-                <CardTitle className="text-xs font-bold text-slate-800 uppercase tracking-wider">Section 2: Clinical Assessment</CardTitle>
-                <CardDescription className="text-[10px]">Record key metabolic and physiological markers.</CardDescription>
+                <CardTitle className="text-xs font-black text-slate-900 uppercase tracking-wider">
+                  Station 2: CHC / PHC Lab & Diabetic Vitals
+                </CardTitle>
+                <CardDescription className="text-[10px]">Blood glucose testing (GRBS/RBS/HbA1c) conducted by CHC people & blood pressure.</CardDescription>
               </div>
             </div>
           </CardHeader>
-          <CardContent className="p-4 md:p-6 grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-            <div className="md:col-span-2">
-              <label className="block text-xs sm:text-sm font-bold text-slate-700 uppercase mb-2">Diabetes Duration *</label>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2.5">
+          <CardContent className="p-4 md:p-6 space-y-4 text-xs">
+            
+            {/* Diabetes Duration */}
+            <div>
+              <label className="block text-xs font-bold text-slate-700 uppercase mb-2">Duration of Diabetes *</label>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
                 {DIABETES_DURATION_OPTIONS.map((d) => {
                   const currentDuration = watch("diabetesDuration");
                   const active = currentDuration === d;
@@ -907,9 +1134,9 @@ export default function DrsmsScreeningEntry() {
                       key={d}
                       type="button"
                       onClick={() => handleFieldChange("diabetesDuration", d)}
-                      className={`py-3 px-3 text-xs sm:text-sm font-extrabold rounded-xl border transition-all text-center ${
+                      className={`py-2 px-2 text-xs font-extrabold rounded-xl border transition-all text-center ${
                         active 
-                          ? "bg-orange-500 border-[#FF6B00] text-white shadow-md scale-[1.02]" 
+                          ? "bg-[#FF6B00] border-[#FF6B00] text-white shadow-xs scale-[1.02]" 
                           : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
                       }`}
                     >
@@ -921,18 +1148,85 @@ export default function DrsmsScreeningEntry() {
               {errors.diabetesDuration && <p className="text-red-500 text-xs mt-1">{errors.diabetesDuration.message}</p>}
             </div>
 
+            {/* GRBS & Glucose Measurement Input */}
+            <div className="bg-indigo-50/40 p-4 rounded-xl border border-indigo-100 space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-black text-indigo-950 uppercase flex items-center gap-1.5">
+                  🩸 Diabetic Measure & Lab Input (Done by CHC People)
+                </label>
+                <span className="text-[10px] font-bold text-indigo-700 bg-indigo-100 px-2 py-0.5 rounded-full">
+                  CHC Laboratory Protocol
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">Test Measure Type</label>
+                  <select
+                    value={watch("diabetesMeasureType")}
+                    onChange={(e) => handleFieldChange("diabetesMeasureType", e.target.value)}
+                    className="w-full text-xs border border-indigo-200 p-2 rounded-lg bg-white font-bold text-indigo-900"
+                  >
+                    {DIABETES_MEASURE_TYPES.map((t) => (
+                      <option key={t} value={t}>{t}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">
+                    Glucose Value ({watch("diabetesMeasureType") || "mg/dL"})
+                  </label>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    placeholder="e.g. 185 mg/dL or 8.2%"
+                    value={watch("diabetesMeasureValue") || ""}
+                    onChange={(e) => handleFieldChange("diabetesMeasureValue", e.target.value)}
+                    className="w-full text-xs border border-indigo-300 p-2 rounded-lg bg-white font-extrabold text-indigo-900 focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">GRBS Conducted By</label>
+                  <select
+                    value={watch("grbsRecordedBy")}
+                    onChange={(e) => handleFieldChange("grbsRecordedBy", e.target.value)}
+                    className="w-full text-xs border border-indigo-200 p-2 rounded-lg bg-white font-medium text-slate-800"
+                  >
+                    {GRBS_STAFF_OPTIONS.map((st) => (
+                      <option key={st} value={st}>{st}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">
+                  CHC / PHC Center Name (Optional)
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Anugodu CHC / Channagiri PHC"
+                  value={watch("chcPhcCenterName") || ""}
+                  onChange={(e) => handleFieldChange("chcPhcCenterName", e.target.value)}
+                  className="w-full text-xs border border-indigo-200 p-2 rounded-lg bg-white font-medium text-slate-800"
+                />
+              </div>
+            </div>
+
+            {/* Blood Pressure */}
             <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Blood Pressure (mmHg) (Optional)</label>
-              <div className="flex items-center gap-2">
+              <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">Blood Pressure (mmHg) (Optional)</label>
+              <div className="flex items-center gap-2 max-w-sm">
                 <div className="flex-1">
                   <input
                     type="number"
                     inputMode="numeric"
-                    pattern="[0-9]*"
                     placeholder="SYS (e.g. 120)"
                     {...register("systolicBP")}
                     onChange={(e) => handleFieldChange("systolicBP", e.target.value)}
-                    className="w-full text-xs border border-slate-300 p-2.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B00]"
+                    className="w-full text-xs border border-slate-300 p-2.5 rounded-lg focus:ring-2 focus:ring-[#FF6B00] font-semibold"
                   />
                 </div>
                 <span className="text-slate-400 font-bold text-base">/</span>
@@ -940,232 +1234,300 @@ export default function DrsmsScreeningEntry() {
                   <input
                     type="number"
                     inputMode="numeric"
-                    pattern="[0-9]*"
                     placeholder="DIA (e.g. 80)"
                     {...register("diastolicBP")}
                     onChange={(e) => handleFieldChange("diastolicBP", e.target.value)}
-                    className="w-full text-xs border border-slate-300 p-2.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B00]"
+                    className="w-full text-xs border border-slate-300 p-2.5 rounded-lg focus:ring-2 focus:ring-[#FF6B00] font-semibold"
                   />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4 mt-1">
-                {errors.systolicBP && <p className="text-red-500 text-[10px]">{errors.systolicBP.message}</p>}
-                {errors.diastolicBP && <p className="text-red-500 text-[10px]">{errors.diastolicBP.message}</p>}
-              </div>
             </div>
+
           </CardContent>
         </Card>
 
-        {/* Section 3: Fundus Photography */}
+        {/* ========================================================================= */}
+        {/* STATION 3: OPHTHALMIC ASSESSMENT, CATARACT SEGREGATION & DR PLAN          */}
+        {/* ========================================================================= */}
         <Card className="rounded-xl border border-slate-200 shadow-sm bg-white overflow-hidden">
           <CardHeader className="bg-gradient-to-r from-orange-500/10 to-[#FF6B00]/5 py-3.5 border-b border-slate-100">
             <div className="flex items-center gap-2">
-              <Camera className="h-4.5 w-4.5 text-[#FF6B00]" />
+              <span className="h-6 w-6 rounded-full bg-[#FF6B00] text-white text-xs font-black flex items-center justify-center">3</span>
               <div>
-                <CardTitle className="text-xs font-bold text-slate-800 uppercase tracking-wider">Section 3: Fundus Photography</CardTitle>
-                <CardDescription className="text-[10px]">Attach high-quality retinal images for diagnostic records.</CardDescription>
+                <CardTitle className="text-xs font-black text-slate-900 uppercase tracking-wider">
+                  Station 3: Ophthalmic & DR Clinical Assessment
+                </CardTitle>
+                <CardDescription className="text-[10px]">Fundus capture toggle, DR staging, Cataract segregation, and action plan.</CardDescription>
               </div>
             </div>
           </CardHeader>
           <CardContent className="p-4 md:p-6 space-y-4 text-xs">
-            <div className="border border-dashed border-slate-300 p-6 rounded-xl flex flex-col items-center justify-center text-center bg-slate-50 gap-3">
-              <Camera className="h-8 w-8 text-slate-400" />
-              <div>
-                <p className="font-bold text-slate-700">Retinal Fundus Image</p>
-                <p className="text-[10px] text-slate-400">Capture direct from ophthalmic camera attachment or select image file</p>
-              </div>
+            
+            {/* Fundus Captured Toggle: YES / NO */}
+            <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-black text-slate-900 uppercase flex items-center gap-1.5">
+                    <Camera className="h-4 w-4 text-[#FF6B00]" /> Retinal Fundus Photography Captured? *
+                  </p>
+                  <p className="text-[10px] text-slate-500">
+                    Toggle YES if retinal photo was taken at camp, or NO if uncaptured / deferred to Base Hospital.
+                  </p>
+                </div>
 
-              <div className="flex flex-wrap gap-2 justify-center">
-                <Button
-                  type="button"
-                  onClick={() => document.getElementById("camera-input")?.click()}
-                  className="bg-[#FF6B00] hover:bg-[#E05E00] text-white font-bold h-9 text-xs rounded-lg flex items-center gap-1 shadow-sm"
-                >
-                  <Camera className="h-4 w-4" /> Camera Capture
-                </Button>
-                <Button
-                  type="button"
-                  onClick={async () => {
-                    try {
-                      const token = localStorage.getItem("vision2020_token");
-                      const currentId = serialInfo?.uniqueId || "";
-                      const res = await fetch(`/api/integrations/remidio/fetch?visitId=${encodeURIComponent(currentId)}&phone=${watch("phone") || ""}`, {
-                        headers: { Authorization: `Bearer ${token}` }
-                      });
-                      if (res.ok) {
-                        const result = await res.json();
-                        const odImg = result.data?.images?.[0]?.imageUrl || "placeholder_fundus.jpg";
-                        setImagePreview(odImg);
-                        toast({
-                          title: "Remidio Camera Synced! 📸",
-                          description: `Fetched fundus image from ${result.data?.deviceModel || "Remidio Camera"} (${result.data?.deviceSerial || "REM-FOP"}).`
-                        });
-                      }
-                    } catch (err) {
-                      toast({
-                        title: "Remidio Sync",
-                        description: "Could not fetch from Remidio Camera.",
-                        variant: "destructive"
-                      });
-                    }
-                  }}
-                  className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold h-9 text-xs rounded-lg flex items-center gap-1 shadow-xs"
-                >
-                  <Activity className="h-4 w-4" /> Fetch from Remidio Camera
-                </Button>
-                <Button
-                  type="button"
-                  onClick={() => document.getElementById("file-input")?.click()}
-                  className="bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 font-semibold h-9 text-xs rounded-lg flex items-center gap-1"
-                >
-                  <Upload className="h-4 w-4" /> Upload File
-                </Button>
-              </div>
-
-              <input
-                id="camera-input"
-                type="file"
-                accept="image/*"
-                capture="environment"
-                className="hidden"
-                onChange={handleImageSelect}
-              />
-              <input
-                id="file-input"
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={handleImageSelect}
-              />
-
-              {imagePreview && (
-                <div className="relative mt-2">
-                  <img
-                    src={imagePreview}
-                    alt="Fundus Thumbnail Preview"
-                    className="h-28 w-28 object-cover rounded-lg border border-slate-200 cursor-pointer"
-                    onClick={() => setFullscreenImage(imagePreview)}
-                  />
+                <div className="flex gap-2">
                   <button
                     type="button"
-                    onClick={() => {
-                      setImageFile(null);
-                      setImagePreview(null);
-                      handleFieldChange("imagePath", "");
-                    }}
-                    className="absolute -top-1.5 -right-1.5 p-1 bg-red-100 text-red-600 rounded-full border border-red-200"
+                    onClick={() => handleFieldChange("fundusCaptured", true)}
+                    className={`px-4 py-1.5 text-xs font-black rounded-lg border transition-all ${
+                      watch("fundusCaptured") 
+                        ? "bg-emerald-600 border-emerald-600 text-white shadow-2xs" 
+                        : "bg-white border-slate-300 text-slate-700 hover:bg-slate-100"
+                    }`}
                   >
-                    <X className="h-3 w-3" />
+                    YES (Captured)
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => handleFieldChange("fundusCaptured", false)}
+                    className={`px-4 py-1.5 text-xs font-black rounded-lg border transition-all ${
+                      !watch("fundusCaptured") 
+                        ? "bg-amber-600 border-amber-600 text-white shadow-2xs" 
+                        : "bg-white border-slate-300 text-slate-700 hover:bg-slate-100"
+                    }`}
+                  >
+                    NO (Not Captured)
+                  </button>
+                </div>
+              </div>
+
+              {/* If NOT captured, ask for reason */}
+              {!watch("fundusCaptured") && (
+                <div className="pt-3 border-t border-slate-200 space-y-1">
+                  <label className="block text-[10px] font-bold text-amber-900 uppercase">
+                    Reason Fundus Was Not Captured *
+                  </label>
+                  <select
+                    value={watch("fundusNotCapturedReason") || ""}
+                    onChange={(e) => handleFieldChange("fundusNotCapturedReason", e.target.value)}
+                    className="w-full text-xs border border-amber-300 p-2 rounded-lg bg-white font-semibold text-slate-800"
+                  >
+                    <option value="">Select reason...</option>
+                    {FUNDUS_NOT_CAPTURED_REASONS.map((r) => (
+                      <option key={r} value={r}>{r}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* If YES captured, offer optional preview / Remidio sync */}
+              {watch("fundusCaptured") && (
+                <div className="pt-3 border-t border-slate-200 space-y-3">
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      onClick={() => document.getElementById("camera-input")?.click()}
+                      className="bg-[#FF6B00] hover:bg-orange-600 text-white font-bold h-8 text-xs rounded-lg flex items-center gap-1 shadow-2xs"
+                    >
+                      <Camera className="h-3.5 w-3.5" /> Camera Capture
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={async () => {
+                        try {
+                          const token = localStorage.getItem("vision2020_token");
+                          const currentId = serialInfo?.uniqueId || "";
+                          const res = await fetch(`/api/integrations/remidio/fetch?visitId=${encodeURIComponent(currentId)}&phone=${watch("phone") || ""}`, {
+                            headers: { Authorization: `Bearer ${token}` }
+                          });
+                          if (res.ok) {
+                            const result = await res.json();
+                            const odImg = result.data?.images?.[0]?.imageUrl || "placeholder_fundus.jpg";
+                            setImagePreview(odImg);
+                            toast({
+                              title: "Remidio Camera Synced! 📸",
+                              description: `Fetched fundus image from ${result.data?.deviceModel || "Remidio Camera"}.`
+                            });
+                          }
+                        } catch (err) {
+                          toast({ title: "Remidio Sync", description: "Camera fetch completed or upload image manually.", variant: "destructive" });
+                        }
+                      }}
+                      className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold h-8 text-xs rounded-lg flex items-center gap-1 shadow-2xs"
+                    >
+                      <Activity className="h-3.5 w-3.5" /> Sync Remidio Camera
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={() => document.getElementById("file-input")?.click()}
+                      className="bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 font-semibold h-8 text-xs rounded-lg flex items-center gap-1"
+                    >
+                      <Upload className="h-3.5 w-3.5" /> Select File
+                    </Button>
+                  </div>
+
+                  <input
+                    id="camera-input"
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    className="hidden"
+                    onChange={handleImageSelect}
+                  />
+                  <input
+                    id="file-input"
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleImageSelect}
+                  />
+
+                  {imagePreview && (
+                    <div className="relative inline-block mt-2">
+                      <img
+                        src={imagePreview}
+                        alt="Fundus Thumbnail Preview"
+                        className="h-24 w-24 object-cover rounded-lg border border-slate-200 cursor-pointer shadow-xs"
+                        onClick={() => setFullscreenImage(imagePreview)}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setImageFile(null);
+                          setImagePreview(null);
+                          handleFieldChange("imagePath", "");
+                        }}
+                        className="absolute -top-1.5 -right-1.5 p-1 bg-red-100 text-red-600 rounded-full border border-red-200"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
 
-            {/* Fundus quality selector */}
+            {/* DR Diagnosis Staging */}
             <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Fundus Image Quality</label>
-              <div className="flex gap-2">
-                {QUALITY_OPTIONS.map((q) => {
-                  const currentQuality = watch("imageQuality");
-                  const active = currentQuality === q;
+              <label className="block text-xs font-bold text-slate-700 uppercase mb-2">DR Diagnosis & Stage *</label>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {DR_STATUS_OPTIONS.map((dr) => {
+                  const currentDr = watch("drStatus");
+                  const active = currentDr === dr;
                   return (
                     <button
-                      key={q}
+                      key={dr}
                       type="button"
-                      onClick={() => handleFieldChange("imageQuality", q)}
-                      className={`flex-1 py-2 text-xs font-semibold rounded-lg border transition-colors ${
+                      onClick={() => handleFieldChange("drStatus", dr)}
+                      className={`py-2.5 px-3 text-xs font-extrabold rounded-xl border transition-all text-center ${
                         active 
-                          ? "bg-orange-50 border-[#FF6B00] text-[#FF6B00]" 
-                          : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+                          ? "bg-[#FF6B00] border-[#FF6B00] text-white shadow-xs scale-[1.02]" 
+                          : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
                       }`}
                     >
-                      {q}
+                      {dr}
                     </button>
                   );
                 })}
               </div>
+              {errors.drStatus && <p className="text-red-500 text-xs mt-1">{errors.drStatus.message}</p>}
             </div>
-          </CardContent>
-        </Card>
 
-        {/* Section 4: Diagnosis & Referral */}
-        <Card className="rounded-xl border border-slate-200 shadow-sm bg-white overflow-hidden">
-          <CardHeader className="bg-gradient-to-r from-orange-500/10 to-[#FF6B00]/5 py-3.5 border-b border-slate-100">
-            <div className="flex items-center gap-2">
-              <ShieldAlert className="h-4.5 w-4.5 text-[#FF6B00]" />
-              <div>
-                <CardTitle className="text-xs font-bold text-slate-800 uppercase tracking-wider">Section 4: Diagnosis & Referral Actions</CardTitle>
-                <CardDescription className="text-[10px]">Provide final diagnostics and base hospital recommendations.</CardDescription>
+            {/* Cataract Segregation & Future Camp Planning */}
+            <div className="bg-amber-50/50 border border-amber-200 p-4 rounded-xl space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-black text-amber-950 uppercase flex items-center gap-1.5">
+                  👁️ Cataract Segregation & Future Camp Planning
+                </label>
+                <span className="text-[10px] font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full">
+                  Surgical Segregation
+                </span>
               </div>
-            </div>
-          </CardHeader>
-          <CardContent className="p-4 md:p-6 space-y-4 text-xs">
-            <div className="space-y-4">
+
               <div>
-                <label className="block text-xs sm:text-sm font-bold text-slate-700 uppercase mb-2">DR Diagnosis *</label>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-                  {DR_STATUS_OPTIONS.map((dr) => {
-                    const currentDr = watch("drStatus");
-                    const active = currentDr === dr;
+                <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">Cataract Evaluation</label>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {CATARACT_OPTIONS.map((cat) => {
+                    const currentCat = watch("hasCataract") || "None";
+                    const isSelected = currentCat === cat;
                     return (
                       <button
-                        key={dr}
+                        key={cat}
                         type="button"
-                        onClick={() => handleFieldChange("drStatus", dr)}
-                        className={`py-3 px-3.5 text-xs sm:text-sm font-extrabold rounded-xl border transition-all text-center ${
-                          active 
-                            ? "bg-orange-500 border-[#FF6B00] text-white shadow-md scale-[1.02]" 
-                            : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
+                        onClick={() => handleFieldChange("hasCataract", cat)}
+                        className={`py-2 px-2 text-[11px] font-bold rounded-lg border transition-all ${
+                          isSelected 
+                            ? "bg-amber-700 border-amber-700 text-white shadow-2xs" 
+                            : "bg-white border-amber-200 text-slate-700 hover:bg-amber-50"
                         }`}
                       >
-                        {dr}
+                        {cat}
                       </button>
                     );
                   })}
                 </div>
-                {errors.drStatus && <p className="text-red-500 text-xs mt-1">{errors.drStatus.message}</p>}
               </div>
 
-              <div>
-                <label className="block text-xs sm:text-sm font-bold text-slate-700 uppercase mb-2">Advice / Action Plan *</label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                  {ADVICE_OPTIONS.map((a) => {
-                    const currentAdvice = watch("advice");
-                    const active = currentAdvice === a;
-                    return (
-                      <button
-                        key={a}
-                        type="button"
-                        onClick={() => handleFieldChange("advice", a)}
-                        className={`py-3 px-4 text-xs sm:text-sm font-extrabold rounded-xl border transition-all text-left ${
-                          active 
-                            ? "bg-orange-500 border-[#FF6B00] text-white shadow-md scale-[1.01]" 
-                            : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
-                        }`}
-                      >
-                        {a}
-                      </button>
-                    );
-                  })}
+              {/* If Cataract is present, plan how to bring them */}
+              {watch("hasCataract") && watch("hasCataract") !== "None" && (
+                <div className="pt-2 border-t border-amber-200/60 space-y-1.5 animate-fadeIn">
+                  <label className="block text-[10px] font-bold text-amber-900 uppercase">
+                    Future Camp / Surgery Planning Action *
+                  </label>
+                  <select
+                    value={watch("cataractPlanning") || ""}
+                    onChange={(e) => handleFieldChange("cataractPlanning", e.target.value)}
+                    className="w-full text-xs border border-amber-300 p-2.5 rounded-lg bg-white font-semibold text-slate-800"
+                  >
+                    <option value="">Select future camp planning action...</option>
+                    {CATARACT_PLANNING_OPTIONS.map((cp) => (
+                      <option key={cp} value={cp}>{cp}</option>
+                    ))}
+                  </select>
                 </div>
-                {errors.advice && <p className="text-red-500 text-xs mt-1">{errors.advice.message}</p>}
+              )}
+            </div>
 
-                {watch("advice") === "Others" && (
-                  <div className="mt-3 p-3 bg-orange-50/70 border border-orange-200 rounded-xl space-y-1.5 animate-fadeIn">
-                    <label className="block text-xs font-extrabold text-orange-900 uppercase">
-                      Specify Other Advice / Custom Action Plan *
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={watch("otherAdvice") || ""}
-                      onChange={(e) => handleFieldChange("otherAdvice", e.target.value)}
-                      placeholder="Type custom advice (e.g. Cataract surgery referral, Refraction & glasses, Glaucoma evaluation)..."
-                      className="w-full text-xs border border-orange-300 p-2.5 rounded-lg bg-white outline-none focus:ring-2 focus:ring-[#FF6B00] font-semibold text-slate-900"
-                    />
-                  </div>
-                )}
+            {/* Advice / Action Plan */}
+            <div>
+              <label className="block text-xs font-bold text-slate-700 uppercase mb-2">Advice & Action Plan *</label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {ADVICE_OPTIONS.map((a) => {
+                  const currentAdvice = watch("advice");
+                  const active = currentAdvice === a;
+                  return (
+                    <button
+                      key={a}
+                      type="button"
+                      onClick={() => handleFieldChange("advice", a)}
+                      className={`py-2.5 px-3 text-xs font-extrabold rounded-xl border transition-all text-left ${
+                        active 
+                          ? "bg-[#FF6B00] border-[#FF6B00] text-white shadow-xs scale-[1.01]" 
+                          : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
+                      }`}
+                    >
+                      {a}
+                    </button>
+                  );
+                })}
               </div>
+              {errors.advice && <p className="text-red-500 text-xs mt-1">{errors.advice.message}</p>}
+
+              {watch("advice") === "Others" && (
+                <div className="mt-3 p-3 bg-orange-50/70 border border-orange-200 rounded-xl space-y-1.5 animate-fadeIn">
+                  <label className="block text-xs font-extrabold text-orange-900 uppercase">
+                    Specify Other Advice / Custom Action Plan *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={watch("otherAdvice") || ""}
+                    onChange={(e) => handleFieldChange("otherAdvice", e.target.value)}
+                    placeholder="Type custom advice (e.g. Cataract surgery referral, Refraction & glasses, Glaucoma evaluation)..."
+                    className="w-full text-xs border border-orange-300 p-2.5 rounded-lg bg-white outline-none focus:ring-2 focus:ring-[#FF6B00] font-semibold text-slate-900"
+                  />
+                </div>
+              )}
             </div>
 
             {/* Refer to Base Hospital checkbox & Remarks */}
@@ -1176,12 +1538,12 @@ export default function DrsmsScreeningEntry() {
                     <ShieldAlert className="h-4 w-4 text-red-600" /> Refer to Base Hospital
                   </p>
                   <p className="text-[10px] text-slate-500 max-w-md">
-                    Flag patient for urgent referral to Sankara Eye Hospital for diagnostic confirmation.
+                    Flag patient for urgent referral to Sankara Eye Hospital for advanced laser/surgical care.
                   </p>
                 </div>
                 <input
                   type="checkbox"
-                  {...register("referToBaseHospital")}
+                  checked={watch("referToBaseHospital")}
                   onChange={(e) => handleFieldChange("referToBaseHospital", e.target.checked)}
                   className="h-5 w-5 rounded-md border-slate-300 text-red-600 focus:ring-red-500 bg-white cursor-pointer"
                 />
@@ -1216,6 +1578,7 @@ export default function DrsmsScreeningEntry() {
                 className="w-full text-xs border border-slate-300 p-2.5 rounded-lg bg-white outline-none focus:ring-2 focus:ring-[#FF6B00] font-medium text-slate-800"
               />
             </div>
+
           </CardContent>
         </Card>
 
@@ -1224,10 +1587,10 @@ export default function DrsmsScreeningEntry() {
           <Button
             type="submit"
             disabled={isUploading}
-            className="flex-1 bg-gradient-to-r from-orange-500 to-[#FF6B00] hover:from-[#FF6B00] hover:to-orange-600 text-white font-bold h-11 text-xs rounded-xl flex items-center justify-center gap-1.5 shadow-md"
+            className="flex-1 bg-gradient-to-r from-orange-500 to-[#FF6B00] hover:from-[#FF6B00] hover:to-orange-600 text-white font-extrabold h-11 text-xs rounded-xl flex items-center justify-center gap-1.5 shadow-md"
           >
             <Save className="h-4.5 w-4.5" />
-            {isUploading ? "Uploading record..." : "Save Patient Screening"}
+            {isUploading ? "Saving screening record..." : "Complete & Save Patient Screening"}
           </Button>
         </div>
       </form>

@@ -379,15 +379,16 @@ export default function DrsmsReports() {
                 <tr>
                   <th className="p-3">Camp Date & ID</th>
                   <th className="p-3">Patient Details</th>
-                  <th className="p-3">Location & Camp</th>
-                  <th className="p-3">DR Diagnosis</th>
-                  <th className="p-3">Advice / Action Plan (Typed Details)</th>
-                  <th className="p-3">Base Hospital & Remarks</th>
-                  <th className="p-3">Vitals (BP & Duration)</th>
+                  <th className="p-3">Referral & Schemes</th>
+                  <th className="p-3">DR Stage</th>
+                  <th className="p-3">Cataract Segregation</th>
+                  <th className="p-3">GRBS / Glucose</th>
+                  <th className="p-3">Advice / Action Plan</th>
+                  <th className="p-3">Base Hospital Follow-Up</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 font-medium">
-                {filteredPreview.map((p) => (
+                {filteredPreview.map((p: any) => (
                   <tr key={p.id} className="hover:bg-orange-50/20 transition-colors">
                     <td className="p-3 whitespace-nowrap">
                       <span className="font-mono text-xs font-extrabold text-[#FF6B00] block">{p.uniqueId}</span>
@@ -396,15 +397,42 @@ export default function DrsmsReports() {
                     <td className="p-3">
                       <span className="font-bold text-slate-900 block">{p.name}</span>
                       <span className="text-[10px] text-slate-500">{p.age} Yrs • {p.gender} • 📞 {p.phone}</span>
+                      <span className="text-[10px] text-slate-400 block">{p.address || p.screeningPlaceCode}</span>
                     </td>
                     <td className="p-3">
-                      <span className="font-bold text-slate-800 text-[11px] block">{p.screeningPlaceCode}</span>
-                      <span className="text-[10px] text-slate-500">{p.address || "Village Area"}</span>
+                      <span className="font-bold text-slate-800 text-[11px] block">📢 {p.referralSource || "ASHA Outreach"}</span>
+                      {p.referredToGiftOfVision && (
+                        <span className="text-[9px] font-black bg-emerald-100 text-emerald-900 px-1.5 py-0.5 rounded border border-emerald-300 inline-block mt-0.5">
+                          🎁 Gift of Vision
+                        </span>
+                      )}
                     </td>
                     <td className="p-3">
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-100 text-[#FF6B00] border border-orange-200 inline-block">
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-orange-100 text-[#FF6B00] border border-orange-200 inline-block">
                         {p.drStatus}
                       </span>
+                    </td>
+                    <td className="p-3">
+                      {p.hasCataract && p.hasCataract !== "None" ? (
+                        <div>
+                          <span className="bg-amber-50 text-amber-900 border border-amber-200 px-1.5 py-0.5 rounded text-[10px] font-bold block w-fit">
+                            👁️ {p.hasCataract}
+                          </span>
+                          {p.cataractPlanning && (
+                            <span className="text-[9px] text-amber-800 font-medium block mt-0.5">
+                              Plan: {p.cataractPlanning}
+                            </span>
+                          )}
+                        </div>
+                      ) : <span className="text-[10px] text-slate-400">None</span>}
+                    </td>
+                    <td className="p-3 whitespace-nowrap text-[11px]">
+                      {p.diabetesMeasureValue ? (
+                        <span className="font-black text-indigo-900 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-100">
+                          {p.diabetesMeasureType || "GRBS"}: {p.diabetesMeasureValue}
+                        </span>
+                      ) : <span className="text-slate-400">-</span>}
+                      <p className="text-[9px] text-slate-400 mt-0.5">BP: {p.bloodPressure || "120/80"}</p>
                     </td>
                     <td className="p-3 max-w-xs">
                       <div className="font-semibold text-slate-900 text-[11px] bg-slate-50 p-1.5 rounded border border-slate-200">
@@ -412,28 +440,18 @@ export default function DrsmsReports() {
                       </div>
                     </td>
                     <td className="p-3 max-w-xs space-y-1">
-                      {p.referToBaseHospital && (
+                      {p.visitedBaseHospital ? (
+                        <div className="bg-emerald-50 border border-emerald-200 p-1.5 rounded text-[10px] text-emerald-900 font-medium">
+                          <p className="font-bold">Visited Base Hospital ✓</p>
+                          <p className="text-[9px] font-mono">{p.baseHospitalVisitOutcome || "Management Done"}</p>
+                        </div>
+                      ) : p.referToBaseHospital ? (
                         <span className="text-[10px] font-bold text-red-700 bg-red-50 border border-red-200 px-1.5 py-0.5 rounded block w-fit">
-                          Refer to Base Hospital
+                          Referred to Base
                         </span>
+                      ) : (
+                        <span className="text-[10px] text-slate-400 italic">Not Visited</span>
                       )}
-                      {p.baseHospitalRemarks && (
-                        <p className="text-[10px] text-red-900 font-mono italic">
-                          Base Remarks: {p.baseHospitalRemarks}
-                        </p>
-                      )}
-                      {p.remarks && (
-                        <p className="text-[10px] text-slate-600 font-mono">
-                          Notes: {p.remarks}
-                        </p>
-                      )}
-                      {!p.baseHospitalRemarks && !p.remarks && (
-                        <span className="text-[10px] text-slate-400 italic">None</span>
-                      )}
-                    </td>
-                    <td className="p-3 whitespace-nowrap text-[11px] text-slate-600">
-                      <p>BP: <strong className="text-slate-800">{p.bloodPressure || "120/80"}</strong></p>
-                      <p className="text-[10px] text-slate-500">{p.diabetesDuration}</p>
                     </td>
                   </tr>
                 ))}

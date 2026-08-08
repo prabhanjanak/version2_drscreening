@@ -101,18 +101,45 @@ router.get("/patients/next-serial", requireAuth(), async (req, res) => {
 // GET /api/patients - Get patients list (with pagination, filters, and search)
 router.get("/patients", requireAuth(), async (req, res) => {
   try {
-    const { date, place, name, phone, status, advice, uniqueId, referralStatus } = req.query as Record<string, string>;
+    const { 
+      date, place, name, phone, status, advice, uniqueId, referralStatus,
+      hasCataract, visitedBaseHospital, referredToGiftOfVision, referralSource, search 
+    } = req.query as Record<string, string>;
 
     const conditions = [];
 
-    if (date) conditions.push(eq(patientsTable.date, date));
-    if (place) conditions.push(eq(patientsTable.screeningPlaceCode, place.toUpperCase()));
-    if (name) conditions.push(ilike(patientsTable.name, `%${name}%`));
-    if (phone) conditions.push(ilike(patientsTable.phone, `%${phone}%`));
-    if (status) conditions.push(eq(patientsTable.drStatus, status));
-    if (advice) conditions.push(eq(patientsTable.advice, advice));
-    if (uniqueId) conditions.push(ilike(patientsTable.uniqueId, `%${uniqueId}%`));
-    if (referralStatus) conditions.push(eq(patientsTable.referralStatus, referralStatus));
+    if (date && date.trim()) conditions.push(ilike(patientsTable.date, `%${date.trim()}%`));
+    if (place && place.trim()) conditions.push(ilike(patientsTable.screeningPlaceCode, `%${place.trim()}%`));
+    if (name && name.trim()) conditions.push(ilike(patientsTable.name, `%${name.trim()}%`));
+    if (phone && phone.trim()) conditions.push(ilike(patientsTable.phone, `%${phone.trim()}%`));
+    if (status && status.trim()) conditions.push(ilike(patientsTable.drStatus, `%${status.trim()}%`));
+    if (advice && advice.trim()) conditions.push(ilike(patientsTable.advice, `%${advice.trim()}%`));
+    if (uniqueId && uniqueId.trim()) conditions.push(ilike(patientsTable.uniqueId, `%${uniqueId.trim()}%`));
+    if (referralStatus && referralStatus.trim()) conditions.push(ilike(patientsTable.referralStatus, `%${referralStatus.trim()}%`));
+    if (hasCataract && hasCataract.trim()) conditions.push(ilike(patientsTable.hasCataract, `%${hasCataract.trim()}%`));
+    if (referralSource && referralSource.trim()) conditions.push(ilike(patientsTable.referralSource, `%${referralSource.trim()}%`));
+    if (visitedBaseHospital !== undefined && visitedBaseHospital !== "") {
+      conditions.push(eq(patientsTable.visitedBaseHospital, visitedBaseHospital === "true"));
+    }
+    if (referredToGiftOfVision !== undefined && referredToGiftOfVision !== "") {
+      conditions.push(eq(patientsTable.referredToGiftOfVision, referredToGiftOfVision === "true"));
+    }
+    if (search && search.trim()) {
+      conditions.push(
+        or(
+          ilike(patientsTable.name, `%${search.trim()}%`),
+          ilike(patientsTable.uniqueId, `%${search.trim()}%`),
+          ilike(patientsTable.phone, `%${search.trim()}%`),
+          ilike(patientsTable.alternatePhone, `%${search.trim()}%`),
+          ilike(patientsTable.address, `%${search.trim()}%`),
+          ilike(patientsTable.advice, `%${search.trim()}%`),
+          ilike(patientsTable.remarks, `%${search.trim()}%`),
+          ilike(patientsTable.baseHospitalRemarks, `%${search.trim()}%`),
+          ilike(patientsTable.referralSource, `%${search.trim()}%`),
+          ilike(patientsTable.govtSchemes, `%${search.trim()}%`)
+        )
+      );
+    }
 
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
@@ -163,9 +190,19 @@ router.post("/patients", requireAuth(), async (req, res) => {
     gender,
     address,
     phone,
+    alternatePhone,
+    referralSource,
     diabetesDuration,
+    diabetesMeasureType,
+    diabetesMeasureValue,
+    grbsRecordedBy,
+    chcPhcCenterName,
     bloodPressure,
     drStatus,
+    hasCataract,
+    cataractPlanning,
+    fundusCaptured,
+    fundusNotCapturedReason,
     advice,
     imagePath,
     imageQuality,
@@ -175,6 +212,13 @@ router.post("/patients", requireAuth(), async (req, res) => {
     referToBaseHospital,
     baseHospitalRemarks,
     remarks,
+    referredToGiftOfVision,
+    giftOfVisionNotes,
+    govtSchemes,
+    visitedBaseHospital,
+    baseHospitalVisitDate,
+    baseHospitalOutcome,
+    baseHospitalOutcomeNotes,
   } = req.body;
 
   if (!screeningPlaceCode || !name || !age || !gender || !phone) {
@@ -237,15 +281,25 @@ router.post("/patients", requireAuth(), async (req, res) => {
         screeningPlaceCode: cleanPlaceCode,
         serialNumber: nextSerial,
         name: name.trim(),
-        age: parseInt(age, 10),
+        age: parseInt(String(age), 10),
         gender,
         address: address ? address.trim() : null,
         phone: phone.trim(),
+        alternatePhone: alternatePhone ? alternatePhone.trim() : null,
+        referralSource: referralSource ? referralSource.trim() : "Camp Walk-in / General",
         diabetesDuration: diabetesDuration || "Newly Diagnosed",
-        bloodPressure: bloodPressure || null,
+        diabetesMeasureType: diabetesMeasureType || "GRBS (mg/dL)",
+        diabetesMeasureValue: diabetesMeasureValue ? String(diabetesMeasureValue).trim() : null,
+        grbsRecordedBy: grbsRecordedBy ? grbsRecordedBy.trim() : "CHC Staff",
+        chcPhcCenterName: chcPhcCenterName ? chcPhcCenterName.trim() : null,
+        bloodPressure: bloodPressure ? bloodPressure.trim() : null,
         drStatus: drStatus || "No DR",
-        advice: advice || "Hospital Upload Pending",
-        imagePath: imagePath || "Pending Hospital Upload",
+        hasCataract: hasCataract || "None",
+        cataractPlanning: cataractPlanning ? cataractPlanning.trim() : null,
+        fundusCaptured: fundusCaptured !== undefined ? !!fundusCaptured : true,
+        fundusNotCapturedReason: fundusNotCapturedReason ? fundusNotCapturedReason.trim() : null,
+        advice: advice || "Annual Review",
+        imagePath: imagePath || "/uploads/no_fundus_photo.png",
         imageQuality: imageQuality || "Good",
         latitude: latitude || placeDetails?.latitude || null,
         longitude: longitude || placeDetails?.longitude || null,
@@ -253,6 +307,13 @@ router.post("/patients", requireAuth(), async (req, res) => {
         referToBaseHospital: !!referToBaseHospital,
         baseHospitalRemarks: baseHospitalRemarks ? baseHospitalRemarks.trim() : null,
         remarks: remarks ? remarks.trim() : null,
+        referredToGiftOfVision: !!referredToGiftOfVision,
+        giftOfVisionNotes: giftOfVisionNotes ? giftOfVisionNotes.trim() : null,
+        govtSchemes: govtSchemes ? (Array.isArray(govtSchemes) ? govtSchemes.join(", ") : govtSchemes) : null,
+        visitedBaseHospital: !!visitedBaseHospital,
+        baseHospitalVisitDate: baseHospitalVisitDate ? baseHospitalVisitDate.trim() : null,
+        baseHospitalOutcome: baseHospitalOutcome ? baseHospitalOutcome.trim() : null,
+        baseHospitalOutcomeNotes: baseHospitalOutcomeNotes ? baseHospitalOutcomeNotes.trim() : null,
         createdBy: req.user!.id,
       })
       .returning();
@@ -281,9 +342,19 @@ router.put("/patients/:id", requireAuth(), async (req, res) => {
     gender,
     address,
     phone,
+    alternatePhone,
+    referralSource,
     diabetesDuration,
+    diabetesMeasureType,
+    diabetesMeasureValue,
+    grbsRecordedBy,
+    chcPhcCenterName,
     bloodPressure,
     drStatus,
+    hasCataract,
+    cataractPlanning,
+    fundusCaptured,
+    fundusNotCapturedReason,
     advice,
     imagePath,
     imageQuality,
@@ -291,6 +362,13 @@ router.put("/patients/:id", requireAuth(), async (req, res) => {
     referToBaseHospital,
     baseHospitalRemarks,
     remarks,
+    referredToGiftOfVision,
+    giftOfVisionNotes,
+    govtSchemes,
+    visitedBaseHospital,
+    baseHospitalVisitDate,
+    baseHospitalOutcome,
+    baseHospitalOutcomeNotes,
     latitude,
     longitude,
   } = req.body;
@@ -306,13 +384,23 @@ router.put("/patients/:id", requireAuth(), async (req, res) => {
       .update(patientsTable)
       .set({
         name: name ? name.trim() : existing.name,
-        age: age ? parseInt(age, 10) : existing.age,
+        age: age ? parseInt(String(age), 10) : existing.age,
         gender: gender || existing.gender,
         address: address !== undefined ? address : existing.address,
         phone: phone ? phone.trim() : existing.phone,
+        alternatePhone: alternatePhone !== undefined ? alternatePhone : existing.alternatePhone,
+        referralSource: referralSource !== undefined ? referralSource : existing.referralSource,
         diabetesDuration: diabetesDuration || existing.diabetesDuration,
+        diabetesMeasureType: diabetesMeasureType !== undefined ? diabetesMeasureType : existing.diabetesMeasureType,
+        diabetesMeasureValue: diabetesMeasureValue !== undefined ? diabetesMeasureValue : existing.diabetesMeasureValue,
+        grbsRecordedBy: grbsRecordedBy !== undefined ? grbsRecordedBy : existing.grbsRecordedBy,
+        chcPhcCenterName: chcPhcCenterName !== undefined ? chcPhcCenterName : existing.chcPhcCenterName,
         bloodPressure: bloodPressure !== undefined ? bloodPressure : existing.bloodPressure,
         drStatus: drStatus || existing.drStatus,
+        hasCataract: hasCataract !== undefined ? hasCataract : existing.hasCataract,
+        cataractPlanning: cataractPlanning !== undefined ? cataractPlanning : existing.cataractPlanning,
+        fundusCaptured: fundusCaptured !== undefined ? !!fundusCaptured : existing.fundusCaptured,
+        fundusNotCapturedReason: fundusNotCapturedReason !== undefined ? fundusNotCapturedReason : existing.fundusNotCapturedReason,
         advice: advice || existing.advice,
         imagePath: imagePath || existing.imagePath,
         imageQuality: imageQuality || existing.imageQuality,
@@ -320,6 +408,13 @@ router.put("/patients/:id", requireAuth(), async (req, res) => {
         referToBaseHospital: referToBaseHospital !== undefined ? !!referToBaseHospital : existing.referToBaseHospital,
         baseHospitalRemarks: baseHospitalRemarks !== undefined ? baseHospitalRemarks : existing.baseHospitalRemarks,
         remarks: remarks !== undefined ? remarks : existing.remarks,
+        referredToGiftOfVision: referredToGiftOfVision !== undefined ? !!referredToGiftOfVision : existing.referredToGiftOfVision,
+        giftOfVisionNotes: giftOfVisionNotes !== undefined ? giftOfVisionNotes : existing.giftOfVisionNotes,
+        govtSchemes: govtSchemes !== undefined ? (Array.isArray(govtSchemes) ? govtSchemes.join(", ") : govtSchemes) : existing.govtSchemes,
+        visitedBaseHospital: visitedBaseHospital !== undefined ? !!visitedBaseHospital : existing.visitedBaseHospital,
+        baseHospitalVisitDate: baseHospitalVisitDate !== undefined ? baseHospitalVisitDate : existing.baseHospitalVisitDate,
+        baseHospitalOutcome: baseHospitalOutcome !== undefined ? baseHospitalOutcome : existing.baseHospitalOutcome,
+        baseHospitalOutcomeNotes: baseHospitalOutcomeNotes !== undefined ? baseHospitalOutcomeNotes : existing.baseHospitalOutcomeNotes,
         latitude: latitude || existing.latitude,
         longitude: longitude || existing.longitude,
       })
@@ -329,6 +424,71 @@ router.put("/patients/:id", requireAuth(), async (req, res) => {
     res.json(updated);
   } catch (err: any) {
     res.status(500).json({ error: "Failed to update patient: " + err.message });
+  }
+});
+
+// PATCH /api/patients/:id/base-hospital-visit - Record visit & outcome at Base Hospital
+router.patch("/patients/:id/base-hospital-visit", requireAuth(), async (req, res) => {
+  const id = parseInt(req.params.id as string, 10);
+  if (isNaN(id)) {
+    res.status(400).json({ error: "Invalid patient ID" });
+    return;
+  }
+
+  const { visitedBaseHospital, baseHospitalVisitDate, baseHospitalOutcome, baseHospitalOutcomeNotes } = req.body;
+
+  try {
+    const today = new Date().toISOString().split("T")[0];
+    const [updated] = await db
+      .update(patientsTable)
+      .set({
+        visitedBaseHospital: visitedBaseHospital !== undefined ? !!visitedBaseHospital : true,
+        baseHospitalVisitDate: baseHospitalVisitDate || today,
+        baseHospitalOutcome: baseHospitalOutcome || "Evaluation Done",
+        baseHospitalOutcomeNotes: baseHospitalOutcomeNotes ? baseHospitalOutcomeNotes.trim() : null,
+        referralStatus: "Visited",
+      })
+      .where(eq(patientsTable.id, id))
+      .returning();
+
+    res.json({ message: "Base hospital visit outcome recorded successfully", patient: updated });
+  } catch (err: any) {
+    res.status(500).json({ error: "Failed to record base hospital visit: " + err.message });
+  }
+});
+
+// POST /api/patients/:id/upload-fundus - Upload / sync Remidio retinal photo directly at Base Hospital
+router.post("/patients/:id/upload-fundus", requireAuth(), upload.single("image"), async (req, res) => {
+  const id = parseInt(req.params.id as string, 10);
+  if (isNaN(id)) {
+    res.status(400).json({ error: "Invalid patient ID" });
+    return;
+  }
+
+  try {
+    let remoteImagePath = "";
+    if (req.file) {
+      remoteImagePath = `/uploads/${req.file.filename}`;
+    } else if (req.body.imagePath) {
+      remoteImagePath = req.body.imagePath;
+    } else {
+      res.status(400).json({ error: "No image file or imagePath provided" });
+      return;
+    }
+
+    const [updated] = await db
+      .update(patientsTable)
+      .set({
+        imagePath: remoteImagePath,
+        fundusCaptured: true,
+        imageQuality: req.body.imageQuality || "Good",
+      })
+      .where(eq(patientsTable.id, id))
+      .returning();
+
+    res.json({ message: "Remidio fundus image uploaded and synced successfully", patient: updated });
+  } catch (err: any) {
+    res.status(500).json({ error: "Failed to upload fundus image: " + err.message });
   }
 });
 
@@ -397,13 +557,30 @@ router.get("/patients-export", requireAuth(), async (req, res) => {
         gender: patientsTable.gender,
         address: patientsTable.address,
         phone: patientsTable.phone,
+        alternatePhone: patientsTable.alternatePhone,
+        referralSource: patientsTable.referralSource,
         diabetesDuration: patientsTable.diabetesDuration,
+        diabetesMeasureType: patientsTable.diabetesMeasureType,
+        diabetesMeasureValue: patientsTable.diabetesMeasureValue,
+        grbsRecordedBy: patientsTable.grbsRecordedBy,
+        chcPhcCenterName: patientsTable.chcPhcCenterName,
         bloodPressure: patientsTable.bloodPressure,
         drStatus: patientsTable.drStatus,
+        hasCataract: patientsTable.hasCataract,
+        cataractPlanning: patientsTable.cataractPlanning,
+        fundusCaptured: patientsTable.fundusCaptured,
+        fundusNotCapturedReason: patientsTable.fundusNotCapturedReason,
         advice: patientsTable.advice,
         referToBaseHospital: patientsTable.referToBaseHospital,
         baseHospitalRemarks: patientsTable.baseHospitalRemarks,
         remarks: patientsTable.remarks,
+        referredToGiftOfVision: patientsTable.referredToGiftOfVision,
+        giftOfVisionNotes: patientsTable.giftOfVisionNotes,
+        govtSchemes: patientsTable.govtSchemes,
+        visitedBaseHospital: patientsTable.visitedBaseHospital,
+        baseHospitalVisitDate: patientsTable.baseHospitalVisitDate,
+        baseHospitalOutcome: patientsTable.baseHospitalOutcome,
+        baseHospitalOutcomeNotes: patientsTable.baseHospitalOutcomeNotes,
         referralStatus: patientsTable.referralStatus,
         imageQuality: patientsTable.imageQuality,
         imagePath: patientsTable.imagePath,
@@ -418,7 +595,7 @@ router.get("/patients-export", requireAuth(), async (req, res) => {
       .where(whereClause)
       .orderBy(desc(patientsTable.date), desc(patientsTable.createdAt));
 
-    // Convert list to clean CSV format with all typed advice and remarks
+    // Convert list to clean CSV format with all 12 requested clinical and workflow fields
     const headers = [
       "Camp Date",
       "Unique Patient ID",
@@ -426,16 +603,33 @@ router.get("/patients-export", requireAuth(), async (req, res) => {
       "Age (Yrs)",
       "Gender",
       "Mobile Phone",
+      "Alternate Phone",
+      "Referral / Awareness Source",
       "Address / Village",
       "Camp Code",
       "Camp Name",
       "Diabetes Duration",
+      "Glucose Measure Type",
+      "Glucose Reading (mg/dL or %)",
+      "GRBS Done By (CHC/PHC/Staff)",
+      "CHC / PHC Center Name",
       "Blood Pressure (mmHg)",
       "DR Diagnosis / Stage",
+      "Cataract Evaluation",
+      "Cataract Planning & Camp Action",
+      "Fundus Photo Captured (Yes/No)",
+      "Reason If Fundus Not Captured",
       "Advice & Action Plan (Typed Details)",
+      "Referred to Gift of Vision (Yes/No)",
+      "Gift of Vision Sponsorship Notes",
+      "Govt Schemes & Health Insurance",
       "Refer to Base Hospital",
-      "Base Hospital Remarks (Typed Notes)",
-      "General Clinical Remarks (Typed Notes)",
+      "Base Hospital Referral Remarks",
+      "General Clinical Remarks",
+      "Visited Base Hospital (Yes/No)",
+      "Base Hospital Visit Date",
+      "Base Hospital Clinical Outcome",
+      "Base Hospital Outcome Notes",
       "Referral Status",
       "Fundus Image Quality",
       "Fundus Image URL",
@@ -458,16 +652,33 @@ router.get("/patients-export", requireAuth(), async (req, res) => {
       p.age,
       escapeCsv(p.gender),
       escapeCsv(p.phone),
+      escapeCsv(p.alternatePhone || ""),
+      escapeCsv(p.referralSource || "Camp Walk-in"),
       escapeCsv(p.address || ""),
       escapeCsv(p.screeningPlaceCode),
       escapeCsv(p.campName || p.screeningPlaceCode),
       escapeCsv(p.diabetesDuration),
+      escapeCsv(p.diabetesMeasureType || "GRBS (mg/dL)"),
+      escapeCsv(p.diabetesMeasureValue || "N/A"),
+      escapeCsv(p.grbsRecordedBy || "CHC Staff"),
+      escapeCsv(p.chcPhcCenterName || ""),
       escapeCsv(p.bloodPressure || "N/A"),
       escapeCsv(p.drStatus),
+      escapeCsv(p.hasCataract || "None"),
+      escapeCsv(p.cataractPlanning || ""),
+      escapeCsv(p.fundusCaptured ? "Yes" : "No"),
+      escapeCsv(p.fundusNotCapturedReason || ""),
       escapeCsv(p.advice || "N/A"),
+      escapeCsv(p.referredToGiftOfVision ? "Yes (Free Sankara Sponsorship)" : "No"),
+      escapeCsv(p.giftOfVisionNotes || ""),
+      escapeCsv(p.govtSchemes || "None"),
       escapeCsv(p.referToBaseHospital ? "Yes (Referred to Base Hospital)" : "No"),
       escapeCsv(p.baseHospitalRemarks || ""),
       escapeCsv(p.remarks || ""),
+      escapeCsv(p.visitedBaseHospital ? "Yes (Visited Base)" : "No"),
+      escapeCsv(p.baseHospitalVisitDate || ""),
+      escapeCsv(p.baseHospitalOutcome || ""),
+      escapeCsv(p.baseHospitalOutcomeNotes || ""),
       escapeCsv(p.referralStatus || "Referred"),
       escapeCsv(p.imageQuality || "Good"),
       escapeCsv(p.imagePath || ""),
@@ -480,7 +691,7 @@ router.get("/patients-export", requireAuth(), async (req, res) => {
     const csvContent = "\uFEFF" + [headers.join(","), ...rows.map(r => r.join(","))].join("\r\n");
 
     res.setHeader("Content-Type", "text/csv; charset=utf-8");
-    res.setHeader("Content-Disposition", `attachment; filename="DRSMS_Patient_Report_${Date.now()}.csv"`);
+    res.setHeader("Content-Disposition", `attachment; filename="DRSMS_Clinical_Report_${Date.now()}.csv"`);
     res.status(200).send(csvContent);
   } catch (err: any) {
     res.status(500).json({ error: "Failed to export patients: " + err.message });

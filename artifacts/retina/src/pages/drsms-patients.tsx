@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { 
   Search, Eye, Edit2, Trash2, Calendar, MapPin, 
   Phone, User, ShieldAlert, CheckCircle, ChevronRight,
-  Download, Printer, Filter, Grid, List, RefreshCw, Upload
+  Download, Printer, Filter, Grid, List, RefreshCw, Upload,
+  Building, Sparkles, Activity, FileText, Check, X
 } from "lucide-react";
 
 interface PatientRecord {
@@ -21,14 +22,30 @@ interface PatientRecord {
   gender: string;
   address?: string;
   phone: string;
+  alternatePhone?: string | null;
+  referralSource?: string | null;
   diabetesDuration: string;
+  diabetesMeasureType?: string | null;
+  diabetesMeasureValue?: string | null;
   bloodPressure?: string;
   drStatus: string;
+  hasCataract?: string | null;
+  cataractPlanning?: string | null;
+  fundusCaptured?: boolean;
+  fundusNotCapturedReason?: string | null;
   advice: string;
   imagePath: string;
   imageQuality: string;
   referralStatus: string;
   referToBaseHospital?: boolean;
+  baseHospitalRemarks?: string | null;
+  visitedBaseHospital?: boolean;
+  baseHospitalVisitDate?: string | null;
+  baseHospitalVisitOutcome?: string | null;
+  baseHospitalNotes?: string | null;
+  referredToGiftOfVision?: boolean;
+  giftOfVisionNotes?: string | null;
+  govtSchemes?: string[] | null;
   createdAt: string;
 }
 
@@ -49,6 +66,15 @@ const REFERRAL_COLORS: Record<string, string> = {
   "Treated": "bg-emerald-100 text-emerald-800",
   "Follow-up": "bg-indigo-100 text-indigo-800"
 };
+
+const BASE_OUTCOMES = [
+  "Laser Photocoagulation (PRP / Focal) Completed",
+  "Intravitreal Anti-VEGF Injection Administered",
+  "Vitrectomy Surgical Procedure",
+  "Cataract Surgery (Phacoemulsification + Foldable IOL)",
+  "Medical Management & Glycemic Control Advised",
+  "Scheduled for 3-Month Follow-Up"
+];
 
 const getInitials = (name: string) => {
   if (!name) return "PT";
@@ -107,25 +133,27 @@ export default function DrsmsPatients() {
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<"card" | "table">("card");
   
-  // Selected camp state
   const [selectedCampCode, setSelectedCampCode] = useState<string | null>(null);
-
-  // Camp search query
   const [campSearch, setCampSearch] = useState("");
 
-  // Filters state
   const [searchName, setSearchName] = useState("");
   const [searchPhone, setSearchPhone] = useState("");
   const [searchDrStatus, setSearchDrStatus] = useState("");
   const [searchReferral, setSearchReferral] = useState("");
+  const [searchCataract, setSearchCataract] = useState("");
+  const [searchBaseHospital, setSearchBaseHospital] = useState("");
+  const [searchGiftOfVision, setSearchGiftOfVision] = useState("");
   const [searchDate, setSearchDate] = useState("");
+
+  const [activeBasePatient, setActiveBasePatient] = useState<PatientRecord | null>(null);
+  const [baseOutcome, setBaseOutcome] = useState("");
+  const [baseNotes, setBaseNotes] = useState("");
+  const [isSavingBase, setIsSavingBase] = useState(false);
 
   const loadInitialData = async () => {
     setLoading(true);
     try {
       const token = localStorage.getItem("vision2020_token");
-      
-      // 1. Fetch all places
       const placesRes = await fetch("/api/screening-places", {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -133,8 +161,6 @@ export default function DrsmsPatients() {
         const data = await placesRes.json();
         setPlaces(data);
       }
-
-      // 2. Fetch all patients to calculate counts
       const patientsRes = await fetch("/api/patients", {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -159,6 +185,9 @@ export default function DrsmsPatients() {
       if (searchPhone) queryParams.append("phone", searchPhone);
       if (searchDrStatus) queryParams.append("status", searchDrStatus);
       if (searchReferral) queryParams.append("referralStatus", searchReferral);
+      if (searchCataract) queryParams.append("hasCataract", searchCataract);
+      if (searchBaseHospital === "true") queryParams.append("visitedBaseHospital", "true");
+      if (searchGiftOfVision === "true") queryParams.append("referredToGiftOfVision", "true");
       if (searchDate) queryParams.append("date", searchDate);
 
       const res = await fetch(`/api/patients?${queryParams.toString()}`, {
@@ -182,7 +211,7 @@ export default function DrsmsPatients() {
     if (selectedCampCode) {
       fetchPatientsForCamp(selectedCampCode);
     }
-  }, [selectedCampCode, searchName, searchPhone, searchDrStatus, searchReferral, searchDate]);
+  }, [selectedCampCode, searchName, searchPhone, searchDrStatus, searchReferral, searchCataract, searchBaseHospital, searchGiftOfVision, searchDate]);
 
   const handleDelete = async (id: number) => {
     if (!window.confirm("Are you sure you want to permanently delete this screening record?")) return;
@@ -201,16 +230,47 @@ export default function DrsmsPatients() {
     }
   };
 
-  // Filter camps list based on query
+  const handleSaveBaseVisit = async () => {
+    if (!activeBasePatient) return;
+    setIsSavingBase(true);
+    try {
+      const token = localStorage.getItem("vision2020_token");
+      const res = await fetch(`/api/patients/${activeBasePatient.id}/base-visit`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          visitedBaseHospital: true,
+          baseHospitalVisitDate: new Date().toISOString().split("T")[0],
+          baseHospitalVisitOutcome: baseOutcome,
+          baseHospitalNotes: baseNotes
+        })
+      });
+      if (!res.ok) throw new Error("Failed to record base hospital visit");
+      const updated = await res.json();
+      setPatients(prev => prev.map(p => p.id === updated.id ? updated : p));
+      setActiveBasePatient(null);
+      toast({ 
+        title: "Base Hospital Visit Recorded! 🏥", 
+        description: `Marked ${updated.name} as visited Base Hospital.` 
+      });
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      setIsSavingBase(false);
+    }
+  };
+
   const filteredCamps = places.filter(place => 
     place.name.toLowerCase().includes(campSearch.toLowerCase()) ||
     place.shortCode.toLowerCase().includes(campSearch.toLowerCase()) ||
-    place.district.toLowerCase().includes(campSearch.toLowerCase())
+    (place.district && place.district.toLowerCase().includes(campSearch.toLowerCase()))
   );
 
   const selectedCampName = places.find(p => p.shortCode === selectedCampCode)?.name || selectedCampCode;
 
-  // ──── VIEW 1: CAMP SELECTION ────
   if (!selectedCampCode) {
     return (
       <div className="flex-1 p-4 md:p-6 space-y-6 overflow-y-auto bg-slate-50/50 pb-20 md:pb-6">
@@ -226,7 +286,6 @@ export default function DrsmsPatients() {
           )}
         </div>
 
-        {/* Camp Search bar */}
         <div className="relative max-w-md">
           <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
           <input 
@@ -264,7 +323,7 @@ export default function DrsmsPatients() {
                     <div className="flex justify-between items-start gap-2">
                       <div className="space-y-1">
                         <h3 className="font-extrabold text-slate-800 text-sm group-hover:text-[#FF6B00] transition-colors">{place.name}</h3>
-                        <p className="text-[10px] text-slate-400 font-mono">Code: {place.shortCode}</p>
+                        <p className="text-[10px] text-slate-400 font-mono">Code: {place.shortCode} • Date: {place.campDate || (place.createdAt ? new Date(place.createdAt).toISOString().split("T")[0] : "Active")}</p>
                       </div>
                       <span className="text-[10px] font-bold text-slate-500 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-lg shrink-0">
                         {place.placeType || "PHC"}
@@ -301,30 +360,24 @@ export default function DrsmsPatients() {
     );
   }
 
-  // ──── VIEW 2: PATIENT LISTING FOR SPECIFIC CAMP ────
   return (
     <div className="flex-1 p-4 md:p-6 space-y-6 overflow-y-auto bg-slate-50/50 pb-20 md:pb-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div className="space-y-1">
-          <button 
-            onClick={() => {
-              setSelectedCampCode(null);
-              setSearchName("");
-              setSearchPhone("");
-              setSearchDrStatus("");
-              setSearchReferral("");
-              setSearchDate("");
-            }}
-            className="text-xs font-bold text-slate-500 hover:text-slate-800 transition-colors flex items-center gap-1 mb-1"
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-4 rounded-xl border border-slate-200/80 shadow-xs">
+        <div className="flex items-center gap-3">
+          <Button 
+            variant="outline" 
+            onClick={() => setSelectedCampCode(null)}
+            className="h-8 text-xs font-semibold border-slate-200 text-slate-700 bg-slate-50 hover:bg-slate-100"
           >
-            &larr; Back to Camp List
-          </button>
-          <h1 className="text-xl font-bold tracking-tight text-slate-900 truncate max-w-xl">
-            {selectedCampName}
-          </h1>
-          <p className="text-xs text-slate-500">Patient screening index for camp code: <span className="font-mono text-slate-700 font-bold">{selectedCampCode}</span></p>
+            ← Back to Camps
+          </Button>
+          <div>
+            <h2 className="text-base font-extrabold text-slate-900">{selectedCampName}</h2>
+            <p className="text-xs text-slate-500 font-mono">Camp Code: <strong className="text-[#FF6B00]">{selectedCampCode}</strong> • {patients.length} records</p>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
+
+        <div className="flex flex-wrap items-center gap-2">
           <Button
             onClick={async () => {
               if (!selectedCampCode) return;
@@ -335,7 +388,6 @@ export default function DrsmsPatients() {
                 if (searchName) queryParams.append("search", searchName);
                 if (searchPhone) queryParams.append("phone", searchPhone);
                 if (searchDrStatus) queryParams.append("status", searchDrStatus);
-                if (searchDate) queryParams.append("date", searchDate);
 
                 const res = await fetch(`/api/patients-export?${queryParams.toString()}`, {
                   headers: { Authorization: `Bearer ${token}` }
@@ -352,7 +404,7 @@ export default function DrsmsPatients() {
                 a.remove();
                 window.URL.revokeObjectURL(url);
 
-                toast({ title: "Camp Export Ready! 📊", description: `Exported patient list for camp ${selectedCampCode}.` });
+                toast({ title: "Camp Export Ready! 📊", description: `Exported patient list with all typed advice for camp ${selectedCampCode}.` });
               } catch (err: any) {
                 toast({ title: "Export Failed", description: err.message, variant: "destructive" });
               }
@@ -360,7 +412,7 @@ export default function DrsmsPatients() {
             variant="outline"
             className="h-8 text-xs font-bold border-slate-200 text-slate-700 bg-white hover:bg-slate-50 flex items-center gap-1.5 shadow-2xs"
           >
-            <Download className="h-3.5 w-3.5 text-[#FF6B00]" /> Export Camp CSV
+            <Download className="h-3.5 w-3.5 text-[#FF6B00]" /> Export CSV
           </Button>
 
           {((user?.userType as string) === "field_user") && (
@@ -385,44 +437,43 @@ export default function DrsmsPatients() {
         </div>
       </div>
 
-      {/* Filters Card */}
       <Card className="rounded-xl border border-slate-200/80 shadow-xs bg-white">
         <CardContent className="p-4 space-y-4">
-          <div className="flex items-center gap-2 text-xs font-semibold text-slate-700 border-b border-slate-100 pb-2">
-            <Filter className="h-3.5 w-3.5" />
-            <span>Search & Filter Within Camp</span>
+          <div className="flex items-center justify-between text-xs font-semibold text-slate-700 border-b border-slate-100 pb-2">
+            <div className="flex items-center gap-2">
+              <Filter className="h-3.5 w-3.5 text-[#FF6B00]" />
+              <span>Comprehensive Multi-Field Filter & Search</span>
+            </div>
+            <span className="text-[10px] text-slate-400">Showing {patients.length} matching patients</span>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-            {/* Name search */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2.5">
             <div className="relative">
-              <Search className="absolute left-2.5 top-3 h-3.5 w-3.5 text-slate-400" />
+              <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-400" />
               <input 
                 type="text"
-                placeholder="Search Name"
+                placeholder="Name / Unique ID"
                 value={searchName}
                 onChange={(e) => setSearchName(e.target.value)}
-                className="w-full pl-8 text-xs border border-slate-300 p-2.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B00]"
+                className="w-full pl-8 text-xs border border-slate-300 p-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B00]"
               />
             </div>
 
-            {/* Phone search */}
             <div className="relative">
-              <Phone className="absolute left-2.5 top-3 h-3.5 w-3.5 text-slate-400" />
+              <Phone className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-400" />
               <input 
                 type="text"
-                placeholder="Search Phone"
+                placeholder="Phone (Primary / Alt)"
                 value={searchPhone}
                 onChange={(e) => setSearchPhone(e.target.value)}
-                className="w-full pl-8 text-xs border border-slate-300 p-2.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B00]"
+                className="w-full pl-8 text-xs border border-slate-300 p-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B00]"
               />
             </div>
 
-            {/* DR Status */}
             <select
               value={searchDrStatus}
               onChange={(e) => setSearchDrStatus(e.target.value)}
-              className="text-xs border border-slate-300 p-2.5 rounded-lg bg-white"
+              className="text-xs border border-slate-300 p-2 rounded-lg bg-white font-medium"
             >
               <option value="">All DR Stages</option>
               <option value="No DR">No DR</option>
@@ -435,46 +486,66 @@ export default function DrsmsPatients() {
               <option value="Refer">Refer</option>
             </select>
 
-            {/* Referral Status */}
             <select
-              value={searchReferral}
-              onChange={(e) => setSearchReferral(e.target.value)}
-              className="text-xs border border-slate-300 p-2.5 rounded-lg bg-white"
+              value={searchCataract}
+              onChange={(e) => setSearchCataract(e.target.value)}
+              className="text-xs border border-amber-300 p-2 rounded-lg bg-amber-50/50 font-bold text-amber-900"
             >
-              <option value="">All Referrals</option>
-              <option value="Referred">Referred</option>
-              <option value="Visited">Visited</option>
-              <option value="Treated">Treated</option>
-              <option value="Follow-up">Follow-up</option>
+              <option value="">All Cataract</option>
+              <option value="Immature Cataract">Immature Cataract</option>
+              <option value="Mature Cataract">Mature Cataract</option>
+              <option value="Hypermature Cataract">Hypermature Cataract</option>
+              <option value="None">No Cataract (None)</option>
             </select>
 
-            {/* Date */}
+            <select
+              value={searchBaseHospital}
+              onChange={(e) => setSearchBaseHospital(e.target.value)}
+              className="text-xs border border-red-300 p-2 rounded-lg bg-red-50/50 font-bold text-red-900"
+            >
+              <option value="">All Base Status</option>
+              <option value="true">Visited Base Hospital ✓</option>
+            </select>
+
+            <select
+              value={searchGiftOfVision}
+              onChange={(e) => setSearchGiftOfVision(e.target.value)}
+              className="text-xs border border-emerald-300 p-2 rounded-lg bg-emerald-50/50 font-bold text-emerald-900"
+            >
+              <option value="">All Schemes</option>
+              <option value="true">Gift of Vision Only 🎁</option>
+            </select>
+
             <input 
               type="date"
               value={searchDate}
               onChange={(e) => setSearchDate(e.target.value)}
-              className="text-xs border border-slate-300 p-2.5 rounded-lg bg-white"
+              className="text-xs border border-slate-300 p-2 rounded-lg bg-white"
             />
           </div>
 
-          <div className="flex justify-end gap-2 border-t border-slate-100 pt-3">
+          <div className="flex justify-end gap-2 border-t border-slate-100 pt-2">
             <Button 
-              onClick={() => { setSearchName(""); setSearchPhone(""); setSearchDrStatus(""); setSearchReferral(""); setSearchDate(""); }}
-              className="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs px-3 h-8 rounded-lg"
+              onClick={() => { 
+                setSearchName(""); setSearchPhone(""); setSearchDrStatus(""); 
+                setSearchReferral(""); setSearchCataract(""); setSearchBaseHospital(""); 
+                setSearchGiftOfVision(""); setSearchDate(""); 
+              }}
+              variant="outline"
+              className="text-slate-600 text-xs px-3 h-7 rounded-lg"
             >
               Reset Filters
             </Button>
             <Button 
               onClick={() => fetchPatientsForCamp(selectedCampCode)}
-              className="bg-[#FF6B00] hover:bg-[#E05E00] text-white text-xs px-4 h-8 rounded-lg"
+              className="bg-[#FF6B00] hover:bg-[#E05E00] text-white text-xs px-4 h-7 rounded-lg font-bold"
             >
-              Search
+              Apply Filter
             </Button>
           </div>
         </CardContent>
       </Card>
 
-      {/* Main content list */}
       {loading ? (
         <div className="space-y-4">
           {[1, 2, 3].map(i => (
@@ -485,60 +556,89 @@ export default function DrsmsPatients() {
         <Card className="rounded-xl border border-slate-200/80 p-8 text-center flex flex-col items-center gap-2 bg-white">
           <ShieldAlert className="h-10 w-10 text-slate-300" />
           <h3 className="font-bold text-slate-700">No Patient Records Found</h3>
-          <p className="text-xs text-slate-400 max-w-sm">No screening records matching the parameters were found for this camp.</p>
+          <p className="text-xs text-slate-400 max-w-sm">No screening records matching the filters were found for camp {selectedCampCode}.</p>
         </Card>
       ) : viewMode === "card" ? (
-        /* Card View */
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {patients.map((p) => (
             <Card key={p.id} className="rounded-xl border border-slate-200/80 shadow-xs hover:shadow-md transition-all overflow-hidden bg-white">
               <div className="p-4 flex gap-4">
                 {renderPatientAvatar(p)}
 
-                <div className="flex-1 min-w-0 space-y-1">
+                <div className="flex-1 min-w-0 space-y-1.5">
                   <div className="flex justify-between items-start gap-2">
-                    <h3 className="font-bold text-slate-800 truncate text-sm">{p.name}</h3>
-                    <span className="text-[10px] font-mono text-slate-400">{p.uniqueId}</span>
-                  </div>
-                  
-                  <div className="flex items-center gap-4 text-xs text-slate-500">
-                    <span>{p.age} Yrs • {p.gender}</span>
-                    <span className="flex items-center gap-1">
-                      <Phone className="h-3 w-3" /> {p.phone}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-2 text-[10px] text-slate-400">
-                    <span className="flex items-center gap-1"><MapPin className="h-3 w-3 text-orange-500" /> {p.screeningPlaceCode}</span>
-                    <span>•</span>
-                    <span className="flex items-center gap-1"><Calendar className="h-3 w-3" /> {p.date}</span>
-                  </div>
-
-                  <div className="pt-2 flex flex-wrap gap-2 items-center">
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium border ${DR_COLORS[p.drStatus] || "bg-slate-100"}`}>
+                    <div>
+                      <h3 className="font-extrabold text-slate-900 truncate text-sm flex items-center gap-1.5">
+                        {p.name}
+                        {p.referredToGiftOfVision && (
+                          <span className="text-[9px] font-black bg-emerald-100 text-emerald-900 px-1.5 py-0.2 rounded border border-emerald-300">
+                            Gift of Vision
+                          </span>
+                        )}
+                      </h3>
+                      <p className="text-[10px] font-mono text-slate-400 font-bold">{p.uniqueId}</p>
+                    </div>
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold border ${DR_COLORS[p.drStatus] || "bg-slate-100"}`}>
                       {p.drStatus}
                     </span>
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${REFERRAL_COLORS[p.referralStatus] || "bg-slate-100"}`}>
-                      {p.referralStatus}
+                  </div>
+                  
+                  <div className="flex items-center gap-3 text-xs text-slate-600">
+                    <span>{p.age} Yrs • {p.gender}</span>
+                    <span className="flex items-center gap-1 font-mono font-semibold">
+                      <Phone className="h-3 w-3 text-slate-400" /> {p.phone}
                     </span>
-                    {p.referToBaseHospital && (
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold text-red-600 bg-red-50 border border-red-200">
-                        Base Hosp.
+                  </div>
+
+                  <div className="flex flex-wrap gap-2 text-[10px]">
+                    {p.diabetesMeasureValue && (
+                      <span className="bg-indigo-50 text-indigo-900 border border-indigo-200 px-2 py-0.5 rounded font-bold">
+                        {p.diabetesMeasureType || "GRBS"}: {p.diabetesMeasureValue}
+                      </span>
+                    )}
+                    {p.hasCataract && p.hasCataract !== "None" && (
+                      <span className="bg-amber-50 text-amber-900 border border-amber-200 px-2 py-0.5 rounded font-bold">
+                        👁️ {p.hasCataract}
+                      </span>
+                    )}
+                    {p.visitedBaseHospital && (
+                      <span className="bg-emerald-600 text-white px-2 py-0.5 rounded font-bold">
+                        Visited Base ✓
                       </span>
                     )}
                   </div>
+
+                  <p className="text-[10px] text-slate-500 truncate">
+                    📢 Source: <strong className="text-slate-800">{p.referralSource || "ASHA Outreach"}</strong>
+                  </p>
                 </div>
               </div>
 
-              {/* Card Actions Footer */}
               <div className="bg-slate-50 border-t border-slate-100 px-4 py-2 flex justify-between items-center text-xs">
-                <span className="text-[10px] text-slate-400 truncate max-w-[150px]">Advice: {p.advice}</span>
-                <div className="flex gap-1.5">
-                  <Link href={`/patients/${p.id}`} className="p-1.5 bg-white border border-slate-200 rounded-md text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors">
+                <span className="text-[10px] text-slate-500 truncate max-w-[180px]">
+                  Advice: <strong className="text-slate-800">{p.advice}</strong>
+                </span>
+                <div className="flex items-center gap-1.5">
+                  <Button
+                    onClick={() => {
+                      setActiveBasePatient(p);
+                      setBaseOutcome(p.baseHospitalVisitOutcome || "");
+                      setBaseNotes(p.baseHospitalNotes || "");
+                    }}
+                    variant="outline"
+                    className={`h-7 text-[10px] font-bold px-2 rounded-md ${
+                      p.visitedBaseHospital ? "bg-emerald-50 text-emerald-800 border-emerald-300" : "bg-white text-rose-700 border-rose-300 hover:bg-rose-50"
+                    }`}
+                  >
+                    <Building className="h-3 w-3 mr-0.5" />
+                    {p.visitedBaseHospital ? "Visited ✓" : "Base Visit"}
+                  </Button>
+
+                  <Link href={`/patients/${p.id}`} className="p-1.5 bg-white border border-slate-200 rounded-md text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors">
                     <Eye className="h-3.5 w-3.5" />
                   </Link>
                   {(user?.userType === "super_admin" || (user?.userType as string) === "field_user") && (
-                    <Link href={`/patients/${p.id}/edit`} className="p-1.5 bg-white border border-slate-200 rounded-md text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors">
+                    <Link href={`/patients/${p.id}/edit`} className="p-1.5 bg-white border border-slate-200 rounded-md text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors">
                       <Edit2 className="h-3.5 w-3.5" />
                     </Link>
                   )}
@@ -556,50 +656,81 @@ export default function DrsmsPatients() {
           ))}
         </div>
       ) : (
-        /* Table View */
         <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-xs">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-slate-50/70 border-b border-slate-200 text-xs font-semibold text-slate-600">
-                <th className="p-4">Date</th>
-                <th className="p-4">Unique ID</th>
-                <th className="p-4">Name</th>
-                <th className="p-4">Age/Gender</th>
-                <th className="p-4">Phone</th>
-                <th className="p-4">Place</th>
-                <th className="p-4">DR Status</th>
-                <th className="p-4">Referral</th>
-                <th className="p-4">Actions</th>
+              <tr className="bg-slate-50/70 border-b border-slate-200 text-xs font-bold text-slate-700">
+                <th className="p-3.5">Unique ID</th>
+                <th className="p-3.5">Patient Name</th>
+                <th className="p-3.5">Age/Gender</th>
+                <th className="p-3.5">Mobile</th>
+                <th className="p-3.5">Referral Source</th>
+                <th className="p-3.5">GRBS / Glucose</th>
+                <th className="p-3.5">DR Stage</th>
+                <th className="p-3.5">Cataract</th>
+                <th className="p-3.5">Base Hospital</th>
+                <th className="p-3.5 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
               {patients.map((p) => (
                 <tr key={p.id} className="hover:bg-slate-50/40">
-                  <td className="p-4">{p.date}</td>
-                  <td className="p-4 font-mono font-semibold text-slate-500">{p.uniqueId}</td>
-                  <td className="p-4 font-bold text-slate-900">{p.name}</td>
-                  <td className="p-4">{p.age} Yrs / {p.gender}</td>
-                  <td className="p-4">{p.phone}</td>
-                  <td className="p-4">{p.screeningPlaceCode}</td>
-                  <td className="p-4">
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium border ${DR_COLORS[p.drStatus] || "bg-slate-100"}`}>
+                  <td className="p-3.5 font-mono font-bold text-[#FF6B00]">{p.uniqueId}</td>
+                  <td className="p-3.5">
+                    <p className="font-extrabold text-slate-900">{p.name}</p>
+                    {p.referredToGiftOfVision && (
+                      <span className="text-[9px] font-black text-emerald-800 bg-emerald-50 border border-emerald-200 px-1 rounded">
+                        Gift of Vision
+                      </span>
+                    )}
+                  </td>
+                  <td className="p-3.5">{p.age} Yrs / {p.gender}</td>
+                  <td className="p-3.5 font-mono">{p.phone}</td>
+                  <td className="p-3.5 font-medium text-slate-600">{p.referralSource || "ASHA Outreach"}</td>
+                  <td className="p-3.5">
+                    {p.diabetesMeasureValue ? (
+                      <span className="font-black text-indigo-900 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-100">
+                        {p.diabetesMeasureValue}
+                      </span>
+                    ) : "-"}
+                  </td>
+                  <td className="p-3.5">
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold border ${DR_COLORS[p.drStatus] || "bg-slate-100"}`}>
                       {p.drStatus}
                     </span>
                   </td>
-                  <td className="p-4">
-                    <div className="flex flex-col gap-1">
-                      <span className={`w-fit px-2 py-0.5 rounded-full text-[10px] font-semibold ${REFERRAL_COLORS[p.referralStatus] || "bg-slate-100"}`}>
-                        {p.referralStatus}
+                  <td className="p-3.5">
+                    {p.hasCataract && p.hasCataract !== "None" ? (
+                      <span className="bg-amber-50 text-amber-900 border border-amber-200 text-[10px] font-bold px-1.5 py-0.5 rounded">
+                        {p.hasCataract}
                       </span>
-                      {p.referToBaseHospital && (
-                        <span className="w-fit text-[9px] font-bold text-red-600 bg-red-50 border border-red-200 px-1.5 py-0.5 rounded">
-                          Base Hosp.
-                        </span>
-                      )}
-                    </div>
+                    ) : <span className="text-slate-400">None</span>}
                   </td>
-                  <td className="p-4">
-                    <div className="flex gap-1.5">
+                  <td className="p-3.5">
+                    {p.visitedBaseHospital ? (
+                      <span className="bg-emerald-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+                        Visited ✓
+                      </span>
+                    ) : p.referToBaseHospital ? (
+                      <span className="bg-red-50 text-red-700 border border-red-200 text-[10px] font-bold px-1.5 py-0.5 rounded">
+                        Referred
+                      </span>
+                    ) : <span className="text-slate-400">Not Flagged</span>}
+                  </td>
+                  <td className="p-3.5 text-right">
+                    <div className="flex justify-end items-center gap-1.5">
+                      <Button
+                        onClick={() => {
+                          setActiveBasePatient(p);
+                          setBaseOutcome(p.baseHospitalVisitOutcome || "");
+                          setBaseNotes(p.baseHospitalNotes || "");
+                        }}
+                        variant="outline"
+                        className="h-7 text-[10px] font-bold px-2 rounded-md border-slate-200"
+                      >
+                        <Building className="h-3 w-3 mr-0.5" />
+                        {p.visitedBaseHospital ? "Outcome" : "Base"}
+                      </Button>
                       <Link href={`/patients/${p.id}`} className="p-1.5 bg-white border border-slate-200 rounded-md text-slate-600 hover:bg-slate-100 transition-colors">
                         <Eye className="h-3.5 w-3.5" />
                       </Link>
@@ -622,6 +753,85 @@ export default function DrsmsPatients() {
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {activeBasePatient && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fadeIn">
+          <Card className="w-full max-w-lg bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden">
+            <CardHeader className="bg-gradient-to-r from-red-600 to-rose-600 text-white p-5">
+              <div className="flex justify-between items-center">
+                <div>
+                  <CardTitle className="text-base font-black flex items-center gap-2">
+                    <Building className="h-5 w-5" /> Base Hospital Visit Outcome
+                  </CardTitle>
+                  <CardDescription className="text-rose-100 text-xs mt-0.5">
+                    {activeBasePatient.name} ({activeBasePatient.uniqueId}) • Phone: {activeBasePatient.phone}
+                  </CardDescription>
+                </div>
+                <button onClick={() => setActiveBasePatient(null)} className="text-rose-100 hover:text-white">
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+            </CardHeader>
+
+            <CardContent className="p-5 space-y-4 text-xs">
+              <div className="bg-rose-50 p-3 rounded-xl border border-rose-200">
+                <p className="text-xs font-bold text-rose-950">
+                  Toggle: Patient Visited Sankara Eye Hospital (Base)
+                </p>
+                <p className="text-[10px] text-rose-700 mt-0.5">
+                  Confirm patient arrival and select the tertiary surgical or laser outcome performed at the base hospital.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+                  Tertiary Outcome / Procedure Done at Base *
+                </label>
+                <select
+                  value={baseOutcome}
+                  onChange={(e) => setBaseOutcome(e.target.value)}
+                  className="w-full text-xs border border-slate-300 p-2.5 rounded-xl bg-white font-bold text-slate-800 outline-none focus:ring-2 focus:ring-rose-500"
+                >
+                  <option value="">Select Base Hospital Outcome...</option>
+                  {BASE_OUTCOMES.map((o) => (
+                    <option key={o} value={o}>{o}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+                  Base Hospital Clinical Notes & Follow-Up Advice
+                </label>
+                <textarea
+                  rows={3}
+                  value={baseNotes}
+                  onChange={(e) => setBaseNotes(e.target.value)}
+                  placeholder="Enter surgical notes, post-op vision, laser quadrants treated, or next appointment date..."
+                  className="w-full text-xs border border-slate-300 p-2.5 rounded-xl bg-white outline-none focus:ring-2 focus:ring-rose-500 font-medium text-slate-800"
+                />
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <Button
+                  onClick={() => setActiveBasePatient(null)}
+                  variant="outline"
+                  className="flex-1 text-xs h-9 rounded-xl font-semibold"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleSaveBaseVisit}
+                  disabled={isSavingBase || !baseOutcome}
+                  className="flex-1 bg-gradient-to-r from-red-600 to-rose-600 hover:from-rose-600 hover:to-red-700 text-white text-xs h-9 rounded-xl font-bold shadow-md"
+                >
+                  {isSavingBase ? "Saving..." : "Save Base Visit Outcome"}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       )}
     </div>
