@@ -66,6 +66,15 @@ export function AppLayout({ children }: LayoutProps) {
   const getNavItems = () => {
     const type = user.userType as string;
 
+    // Special dedicated 2 tabs for Ophthalmic Officers
+    if (type === "ophthalmic_officer" || type === "asha_worker") {
+      return [
+        { label: "1. Refer a Patient", href: "/asha-referrals", icon: Heart },
+        { label: "2. My Referrals", href: "/asha-referrals", icon: FileText },
+        { label: "Settings", href: "/settings", icon: Settings },
+      ];
+    }
+
     const items = [
       { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
     ];
@@ -74,8 +83,8 @@ export function AppLayout({ children }: LayoutProps) {
       items.push({ label: "Vision Centers", href: "/vision-centers", icon: Building2 });
     }
 
-    // Patient Referral Portal (Ophthalmic Officers, ASHA Workers, Vision Centers, Outreach & Management)
-    if (type === "super_admin" || type === "admin" || type === "admin_unit" || type === "unit_head" || type === "asha_worker" || type === "ophthalmic_officer" || type === "outreach" || type === "vision_center") {
+    // Patient Referral Portal (ASHA Workers, Vision Centers, Outreach & Management)
+    if (type === "super_admin" || type === "admin" || type === "admin_unit" || type === "unit_head" || type === "outreach" || type === "vision_center") {
       items.push({ label: "Patient Referral", href: "/asha-referrals", icon: Heart });
       items.push({ label: "Follow Up", href: "/follow-up", icon: PhoneCall });
     }
@@ -84,7 +93,7 @@ export function AppLayout({ children }: LayoutProps) {
       items.push({ label: "Facility Dispatch", href: "/facility-schedule", icon: Truck });
     }
 
-    if (type === "super_admin" || type === "admin" || type === "admin_unit" || type === "outreach" || type === "ophthalmic_officer" || type === "field_user") {
+    if (type === "super_admin" || type === "admin" || type === "admin_unit" || type === "outreach" || type === "field_user") {
       items.push({ label: "Screening Entry", href: "/patients/new", icon: Camera });
     }
 

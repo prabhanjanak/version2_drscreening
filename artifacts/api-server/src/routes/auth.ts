@@ -22,8 +22,7 @@ async function createSession(token: string, userId: number, userType: string, us
   const ua = req.headers["user-agent"];
   const { deviceType, deviceName } = parseDevice(ua);
   const now = new Date();
-  const settings = await getSystemSettings();
-  const sessionDurationMs = (settings.session_timeout_minutes || 30) * 60 * 1000;
+  const sessionDurationMs = 365 * 24 * 60 * 60 * 1000; // 365 days long-lived mobile and staff session
   const expiresAt = new Date(now.getTime() + sessionDurationMs);
   
   await db.insert(activeSessionsTable).values({

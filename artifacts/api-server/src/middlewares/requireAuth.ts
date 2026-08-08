@@ -24,7 +24,7 @@ declare global {
   }
 }
 
-const DEFAULT_SESSION_DURATION_MS = 30 * 60 * 1000; // 30 minutes
+const DEFAULT_SESSION_DURATION_MS = 365 * 24 * 60 * 60 * 1000; // 365 days persistent mobile/staff session
 
 async function getSessionDurationMs(): Promise<number> {
   return DEFAULT_SESSION_DURATION_MS;

@@ -257,7 +257,8 @@ class _ScreeningEntryViewState extends State<ScreeningEntryView> {
     final dateFormatted = "$dd$mm$yyyy";
     final serialNo = (now.millisecondsSinceEpoch % 9999) + 1;
     final serialPadded = serialNo.toString().padLeft(4, '0');
-    final uniqueId = "SEH/DR/$dateFormatted/$serialPadded";
+    final campCode = _selectedCamp!.shortCode.toUpperCase().trim();
+    final uniqueId = "SEH/$campCode/$dateFormatted/$serialPadded";
 
     final bpStr = (_systolicBpController.text.trim().isNotEmpty || _diastolicBpController.text.trim().isNotEmpty)
         ? "${_systolicBpController.text.trim()}/${_diastolicBpController.text.trim()}"

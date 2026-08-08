@@ -104,6 +104,7 @@ router.post("/vc-referrals", requireAuth(), async (req, res) => {
       gender,
       phone,
       address: address || null,
+      village: address || null,
       visionCenterId: vcId,
       visionCenterCode: effectiveVcCode,
       referrerType: effectiveReferrerType,

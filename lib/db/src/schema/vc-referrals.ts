@@ -12,6 +12,7 @@ export const vcReferralsTable = pgTable("vc_referrals", {
   gender: text("gender").notNull(),
   phone: text("phone").notNull(),
   address: text("address"),
+  village: text("village"),
   visionCenterId: integer("vision_center_id").references(() => visionCentersTable.id),
   visionCenterCode: text("vision_center_code").notNull(),
   referrerType: text("referrer_type").notNull().default("vision_center"), // vision_center | asha_worker

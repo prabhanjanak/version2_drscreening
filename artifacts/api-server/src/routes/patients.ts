@@ -49,7 +49,7 @@ router.post("/patients/upload-image", requireAuth(), upload.single("image"), (re
   res.json({ imagePath });
 });
 
-// GET /api/patients/next-serial - Retrieve next serial number & unique id format
+// GET /api/patients/next-serial - Retrieve next serial number & unique id format (Continuous Global Counter)
 router.get("/patients/next-serial", requireAuth(), async (req, res) => {
   const placeCode = (req.query.placeCode as string || "").toUpperCase().trim();
   const dateStr = (req.query.date as string || "").trim(); // YYYY-MM-DD
@@ -60,22 +60,16 @@ router.get("/patients/next-serial", requireAuth(), async (req, res) => {
   }
 
   try {
-    // Find maximum serial number for this place and date
+    // Find global maximum serial number across ALL camps and dates
     const [result] = await db
-      .select({ maxSerial: sql<number>`MAX(${patientsTable.serialNumber})` })
-      .from(patientsTable)
-      .where(
-        and(
-          eq(patientsTable.screeningPlaceCode, placeCode),
-          eq(patientsTable.date, dateStr)
-        )
-      );
+      .select({ maxSerial: sql<number>`COALESCE(MAX(${patientsTable.serialNumber}), 0)` })
+      .from(patientsTable);
 
     const nextSerial = (result?.maxSerial || 0) + 1;
     const serialStr = nextSerial.toString().padStart(4, "0");
     const parts = dateStr.split("-");
     const dateFormatted = parts.length === 3 ? `${parts[2]}${parts[1]}${parts[0]}` : dateStr.replace(/-/g, "");
-    const uniqueId = `SEH/DR/${dateFormatted}/${serialStr}`;
+    const uniqueId = `SEH/${placeCode}/${dateFormatted}/${serialStr}`;
 
     res.json({ nextSerial, uniqueId });
   } catch (err: any) {
@@ -176,39 +170,36 @@ router.post("/patients", requireAuth(), async (req, res) => {
 
     const phoneWarning = phoneRecords.length > 0 ? `Warning: Patient with phone number ${phone} was screened ${phoneRecords.length} times previously.` : null;
 
-    // Find maximum serial number for this place and date
-    const [result] = await db
-      .select({ maxSerial: sql<number>`MAX(${patientsTable.serialNumber})` })
-      .from(patientsTable)
-      .where(
-        and(
-          eq(patientsTable.screeningPlaceCode, screeningPlaceCode.toUpperCase()),
-          eq(patientsTable.date, date)
-        )
-      );
+    // Find global maximum serial number across ALL camps and dates
+    const [globalMax] = await db
+      .select({ maxSerial: sql<number>`COALESCE(MAX(${patientsTable.serialNumber}), 0)` })
+      .from(patientsTable);
 
     const [placeDetails] = await db
       .select({ latitude: screeningPlacesTable.latitude, longitude: screeningPlacesTable.longitude })
       .from(screeningPlacesTable)
       .where(eq(screeningPlacesTable.shortCode, screeningPlaceCode.toUpperCase()));
 
-    const nextSerial = (result?.maxSerial || 0) + 1;
-    const serialStr = nextSerial.toString().padStart(4, "0");
+    let nextSerial = (globalMax?.maxSerial || 0) + 1;
+    let serialStr = nextSerial.toString().padStart(4, "0");
     const dateParts = date.split("-");
     const dateFormatted = dateParts.length === 3 ? `${dateParts[2]}${dateParts[1]}${dateParts[0]}` : date.replace(/-/g, "");
-    const generatedUniqueId = `SEH/DR/${dateFormatted}/${serialStr}`;
-    const uniqueId = req.body.uniqueId && req.body.uniqueId.startsWith("SEH/DR/") ? req.body.uniqueId : generatedUniqueId;
+    const cleanPlaceCode = screeningPlaceCode.toUpperCase().trim();
+    let generatedUniqueId = `SEH/${cleanPlaceCode}/${dateFormatted}/${serialStr}`;
 
-    // Verify unique ID uniqueness
-    const [existingId] = await db
-      .select()
-      .from(patientsTable)
-      .where(eq(patientsTable.uniqueId, uniqueId));
-
-    if (existingId) {
-      res.status(400).json({ error: "Unique ID collision detected. Please resubmit." });
-      return;
+    // Ensure no collisions by finding first available global unique ID
+    while (true) {
+      const [existing] = await db
+        .select({ id: patientsTable.id })
+        .from(patientsTable)
+        .where(eq(patientsTable.uniqueId, generatedUniqueId));
+      if (!existing) break;
+      nextSerial += 1;
+      serialStr = nextSerial.toString().padStart(4, "0");
+      generatedUniqueId = `SEH/${cleanPlaceCode}/${dateFormatted}/${serialStr}`;
     }
+
+    const uniqueId = generatedUniqueId;
 
     const [patient] = await db
       .insert(patientsTable)
