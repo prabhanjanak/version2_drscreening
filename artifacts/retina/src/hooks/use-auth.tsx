@@ -66,78 +66,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [error, location]);
 
-  // ─── Inactivity Auto-Logout ───────────────────────────────────────────────
-  const handleActivity = () => {
-    if (!inactivityTimer.current) return; // no timer running (user not logged in)
-    clearTimeout(inactivityTimer.current);
-
-    const timeoutMinutes = user?.sessionTimeoutMinutes ?? 30;
-    const timeoutMs = timeoutMinutes * 60 * 1000;
-
-    inactivityTimer.current = setTimeout(() => {
-      // Revoke session on backend then clear local state
-      const storedToken = localStorage.getItem("vision2020_token");
-      if (storedToken) {
-        fetch("/api/auth/logout", {
-          method: "POST",
-          headers: { Authorization: `Bearer ${storedToken}` },
-        }).catch(() => {});
-      }
-      localStorage.removeItem("vision2020_token");
-      setToken(null);
-      setLocation("/login");
-      toast({
-        title: "Session expired",
-        description: `You were automatically logged out after ${timeoutMinutes} minutes of inactivity.`,
-        variant: "destructive",
-      });
-    }, timeoutMs);
-  };
-
-  useEffect(() => {
-    if (!token || user?.userType === "participant") {
-      // Clear timer when logged out or if user is a participant (no inactivity logout for participants/delegates)
-      if (inactivityTimer.current) {
-        clearTimeout(inactivityTimer.current);
-        inactivityTimer.current = null;
-      }
-      return;
-    }
-
-    const timeoutMinutes = user?.sessionTimeoutMinutes ?? 30;
-    const timeoutMs = timeoutMinutes * 60 * 1000;
-
-    // Start the timer and listen for activity
-    inactivityTimer.current = setTimeout(() => {
-      const storedToken = localStorage.getItem("vision2020_token");
-      if (storedToken) {
-        fetch("/api/auth/logout", {
-          method: "POST",
-          headers: { Authorization: `Bearer ${storedToken}` },
-        }).catch(() => {});
-      }
-      localStorage.removeItem("vision2020_token");
-      setToken(null);
-      setLocation("/login");
-      toast({
-        title: "Session expired",
-        description: `You were automatically logged out after ${timeoutMinutes} minutes of inactivity.`,
-        variant: "destructive",
-      });
-    }, timeoutMs);
-
-    const events = ["mousemove", "mousedown", "keydown", "touchstart", "scroll", "click"];
-    events.forEach((evt) => window.addEventListener(evt, handleActivity, { passive: true }));
-
-    return () => {
-      events.forEach((evt) => window.removeEventListener(evt, handleActivity));
-      if (inactivityTimer.current) {
-        clearTimeout(inactivityTimer.current);
-        inactivityTimer.current = null;
-      }
-    };
-  }, [token, user]); // re-run when token or user settings load/change
-  // ─────────────────────────────────────────────────────────────────────────
+  // Auto-logout completely disabled — sessions remain permanently active until explicit user logout
 
   const login = (newToken: string, newUser: CurrentUser, mustChangePassword?: boolean) => {
     localStorage.setItem("vision2020_token", newToken);

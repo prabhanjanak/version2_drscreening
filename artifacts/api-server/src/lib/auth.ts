@@ -13,12 +13,12 @@ export async function comparePassword(password: string, hash: string): Promise<b
   return bcrypt.compare(password, hash);
 }
 
-export function signToken(payload: object, expiresIn: string = "365d"): string {
-  return jwt.sign(payload, SECRET, { expiresIn: "365d" });
+export function signToken(payload: object, expiresIn: string = "36500d"): string {
+  return jwt.sign(payload, SECRET, { expiresIn: "36500d" });
 }
 
 export function signLongLivedToken(payload: object): string {
-  return jwt.sign(payload, SECRET, { expiresIn: "365d" });
+  return jwt.sign(payload, SECRET, { expiresIn: "36500d" });
 }
 
 export function verifyToken(token: string): Record<string, unknown> | null {

@@ -74,21 +74,23 @@ export function requireAuth(allowedTypes?: string[]) {
     }
 
     const now = new Date();
+    const hundredYears = new Date(now.getTime() + 100 * 365 * 24 * 60 * 60 * 1000);
+
+    // Auto-logout completely disabled — sessions remain permanently active until explicit logout
     if (session.expiresAt < now) {
-      res.status(401).json({ error: "Session expired. Please log in again." });
-      return;
+      await db
+        .update(activeSessionsTable)
+        .set({ expiresAt: hundredYears, lastSeenAt: now })
+        .where(eq(activeSessionsTable.id, session.id));
     }
 
-    // Refresh lastSeenAt and extend expiresAt (sliding window) - throttled to max once per minute to reduce DB write contention
+    // Refresh lastSeenAt throttled to max once per minute
     const nowMs = now.getTime();
     const lastSeenMs = session.lastSeenAt.getTime();
     if (nowMs - lastSeenMs > 60_000) {
-      const isParticipant = session.userType === "participant";
-      const sessionDurationMs = isParticipant ? 10 * 24 * 60 * 60 * 1000 : await getSessionDurationMs();
-      const newExpiry = new Date(nowMs + sessionDurationMs);
       await db
         .update(activeSessionsTable)
-        .set({ lastSeenAt: now, expiresAt: newExpiry })
+        .set({ lastSeenAt: now, expiresAt: hundredYears })
         .where(eq(activeSessionsTable.id, session.id));
     }
 
