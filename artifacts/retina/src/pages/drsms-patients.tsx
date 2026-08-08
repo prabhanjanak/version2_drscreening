@@ -325,8 +325,46 @@ export default function DrsmsPatients() {
           <p className="text-xs text-slate-500">Patient screening index for camp code: <span className="font-mono text-slate-700 font-bold">{selectedCampCode}</span></p>
         </div>
         <div className="flex items-center gap-2">
+          <Button
+            onClick={async () => {
+              if (!selectedCampCode) return;
+              try {
+                const token = localStorage.getItem("vision2020_token");
+                const queryParams = new URLSearchParams();
+                queryParams.append("place", selectedCampCode);
+                if (searchName) queryParams.append("search", searchName);
+                if (searchPhone) queryParams.append("phone", searchPhone);
+                if (searchDrStatus) queryParams.append("status", searchDrStatus);
+                if (searchDate) queryParams.append("date", searchDate);
+
+                const res = await fetch(`/api/patients-export?${queryParams.toString()}`, {
+                  headers: { Authorization: `Bearer ${token}` }
+                });
+                if (!res.ok) throw new Error("Failed to export camp patients");
+
+                const blob = await res.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = `DRSMS_Patients_${selectedCampCode}_${new Date().toISOString().split("T")[0]}.csv`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                window.URL.revokeObjectURL(url);
+
+                toast({ title: "Camp Export Ready! 📊", description: `Exported patient list for camp ${selectedCampCode}.` });
+              } catch (err: any) {
+                toast({ title: "Export Failed", description: err.message, variant: "destructive" });
+              }
+            }}
+            variant="outline"
+            className="h-8 text-xs font-bold border-slate-200 text-slate-700 bg-white hover:bg-slate-50 flex items-center gap-1.5 shadow-2xs"
+          >
+            <Download className="h-3.5 w-3.5 text-[#FF6B00]" /> Export Camp CSV
+          </Button>
+
           {((user?.userType as string) === "field_user") && (
-            <Link href="/patients/new" className="px-4 py-2 bg-gradient-to-r from-orange-500 to-[#FF6B00] hover:from-[#FF6B00] hover:to-orange-600 text-white rounded-lg text-sm font-semibold shadow-xs">
+            <Link href="/patients/new" className="px-3 py-1.5 bg-gradient-to-r from-orange-500 to-[#FF6B00] hover:from-[#FF6B00] hover:to-orange-600 text-white rounded-lg text-xs font-semibold shadow-xs">
               + New Screening
             </Link>
           )}

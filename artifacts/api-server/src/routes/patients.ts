@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { eq, and, or, ilike, desc, sql } from "drizzle-orm";
-import { db, patientsTable, screeningPlacesTable } from "@workspace/db";
+import { db, patientsTable, screeningPlacesTable, systemUsersTable } from "@workspace/db";
 import { requireAuth } from "../middlewares/requireAuth";
 import multer from "multer";
 import path from "path";
@@ -52,14 +52,35 @@ router.post("/patients/upload-image", requireAuth(), upload.single("image"), (re
 // GET /api/patients/next-serial - Retrieve next serial number & unique id format (Continuous Global Counter)
 router.get("/patients/next-serial", requireAuth(), async (req, res) => {
   const placeCode = (req.query.placeCode as string || "").toUpperCase().trim();
-  const dateStr = (req.query.date as string || "").trim(); // YYYY-MM-DD
+  const dateStr = (req.query.date as string || "").trim(); // YYYY-MM-DD fallback
 
-  if (!placeCode || !dateStr) {
-    res.status(400).json({ error: "placeCode and date query params are required" });
+  if (!placeCode) {
+    res.status(400).json({ error: "placeCode query param is required" });
     return;
   }
 
   try {
+    // Look up camp to get its official camp creation date / camp date
+    const [place] = await db
+      .select({
+        campDate: screeningPlacesTable.campDate,
+        createdAt: screeningPlacesTable.createdAt,
+      })
+      .from(screeningPlacesTable)
+      .where(eq(screeningPlacesTable.shortCode, placeCode));
+
+    let effectiveDate = "";
+    if (place) {
+      if (place.campDate && place.campDate.trim()) {
+        effectiveDate = place.campDate.trim();
+      } else if (place.createdAt) {
+        effectiveDate = new Date(place.createdAt).toISOString().split("T")[0];
+      }
+    }
+    if (!effectiveDate) {
+      effectiveDate = dateStr || new Date().toISOString().split("T")[0];
+    }
+
     // Find global maximum serial number across ALL camps and dates
     const [result] = await db
       .select({ maxSerial: sql<number>`COALESCE(MAX(${patientsTable.serialNumber}), 0)` })
@@ -67,11 +88,11 @@ router.get("/patients/next-serial", requireAuth(), async (req, res) => {
 
     const nextSerial = (result?.maxSerial || 0) + 1;
     const serialStr = nextSerial.toString().padStart(4, "0");
-    const parts = dateStr.split("-");
-    const dateFormatted = parts.length === 3 ? `${parts[2]}${parts[1]}${parts[0]}` : dateStr.replace(/-/g, "");
+    const parts = effectiveDate.split("-");
+    const dateFormatted = parts.length === 3 ? `${parts[2]}${parts[1]}${parts[0]}` : effectiveDate.replace(/-/g, "");
     const uniqueId = `SEH/${placeCode}/${dateFormatted}/${serialStr}`;
 
-    res.json({ nextSerial, uniqueId });
+    res.json({ nextSerial, uniqueId, campDate: effectiveDate });
   } catch (err: any) {
     res.status(500).json({ error: "Failed to generate next serial: " + err.message });
   }
@@ -156,12 +177,14 @@ router.post("/patients", requireAuth(), async (req, res) => {
     remarks,
   } = req.body;
 
-  if (!date || !screeningPlaceCode || !name || !age || !gender || !phone) {
-    res.status(400).json({ error: "Missing required fields. Date, Screening Place, Name, Age, Gender, and Phone are required." });
+  if (!screeningPlaceCode || !name || !age || !gender || !phone) {
+    res.status(400).json({ error: "Missing required fields. Screening Place, Name, Age, Gender, and Phone are required." });
     return;
   }
 
   try {
+    const cleanPlaceCode = screeningPlaceCode.toUpperCase().trim();
+
     // Check if phone number already has previous records (warning condition check)
     const phoneRecords = await db
       .select({ id: patientsTable.id })
@@ -170,43 +193,48 @@ router.post("/patients", requireAuth(), async (req, res) => {
 
     const phoneWarning = phoneRecords.length > 0 ? `Warning: Patient with phone number ${phone} was screened ${phoneRecords.length} times previously.` : null;
 
-    // Find global maximum serial number across ALL camps and dates
+    // 1. Fetch camp details to get coordinates AND the official camp creation date / camp date
+    const [placeDetails] = await db
+      .select({
+        latitude: screeningPlacesTable.latitude,
+        longitude: screeningPlacesTable.longitude,
+        campDate: screeningPlacesTable.campDate,
+        createdAt: screeningPlacesTable.createdAt,
+      })
+      .from(screeningPlacesTable)
+      .where(eq(screeningPlacesTable.shortCode, cleanPlaceCode));
+
+    // Determine the official date for this patient record from the camp creation / camp date
+    let patientDate = "";
+    if (placeDetails) {
+      if (placeDetails.campDate && placeDetails.campDate.trim()) {
+        patientDate = placeDetails.campDate.trim();
+      } else if (placeDetails.createdAt) {
+        patientDate = new Date(placeDetails.createdAt).toISOString().split("T")[0];
+      }
+    }
+    // Fallback if camp has no date info
+    if (!patientDate) {
+      patientDate = (date && typeof date === "string" && date.trim()) ? date.trim() : new Date().toISOString().split("T")[0];
+    }
+
+    // 2. Global continuous serial number
     const [globalMax] = await db
       .select({ maxSerial: sql<number>`COALESCE(MAX(${patientsTable.serialNumber}), 0)` })
       .from(patientsTable);
 
-    const [placeDetails] = await db
-      .select({ latitude: screeningPlacesTable.latitude, longitude: screeningPlacesTable.longitude })
-      .from(screeningPlacesTable)
-      .where(eq(screeningPlacesTable.shortCode, screeningPlaceCode.toUpperCase()));
-
-    let nextSerial = (globalMax?.maxSerial || 0) + 1;
-    let serialStr = nextSerial.toString().padStart(4, "0");
-    const dateParts = date.split("-");
-    const dateFormatted = dateParts.length === 3 ? `${dateParts[2]}${dateParts[1]}${dateParts[0]}` : date.replace(/-/g, "");
-    const cleanPlaceCode = screeningPlaceCode.toUpperCase().trim();
-    let generatedUniqueId = `SEH/${cleanPlaceCode}/${dateFormatted}/${serialStr}`;
-
-    // Ensure no collisions by finding first available global unique ID
-    while (true) {
-      const [existing] = await db
-        .select({ id: patientsTable.id })
-        .from(patientsTable)
-        .where(eq(patientsTable.uniqueId, generatedUniqueId));
-      if (!existing) break;
-      nextSerial += 1;
-      serialStr = nextSerial.toString().padStart(4, "0");
-      generatedUniqueId = `SEH/${cleanPlaceCode}/${dateFormatted}/${serialStr}`;
-    }
-
-    const uniqueId = generatedUniqueId;
+    const nextSerial = (globalMax?.maxSerial || 0) + 1;
+    const serialStr = nextSerial.toString().padStart(4, "0");
+    const dateParts = patientDate.split("-");
+    const dateFormatted = dateParts.length === 3 ? `${dateParts[2]}${dateParts[1]}${dateParts[0]}` : patientDate.replace(/-/g, "");
+    const uniqueId = `SEH/${cleanPlaceCode}/${dateFormatted}/${serialStr}`;
 
     const [patient] = await db
       .insert(patientsTable)
       .values({
         uniqueId,
-        date,
-        screeningPlaceCode: screeningPlaceCode.toUpperCase(),
+        date: patientDate,
+        screeningPlaceCode: cleanPlaceCode,
         serialNumber: nextSerial,
         name: name.trim(),
         age: parseInt(age, 10),
@@ -219,8 +247,8 @@ router.post("/patients", requireAuth(), async (req, res) => {
         advice: advice || "Hospital Upload Pending",
         imagePath: imagePath || "Pending Hospital Upload",
         imageQuality: imageQuality || "Good",
-        latitude: placeDetails?.latitude || null,
-        longitude: placeDetails?.longitude || null,
+        latitude: latitude || placeDetails?.latitude || null,
+        longitude: longitude || placeDetails?.longitude || null,
         referralStatus: referralStatus || "Referred",
         referToBaseHospital: !!referToBaseHospital,
         baseHospitalRemarks: baseHospitalRemarks ? baseHospitalRemarks.trim() : null,
@@ -329,69 +357,130 @@ router.delete("/patients/:id", requireAuth(["admin", "super_admin", "admin_unit"
   }
 });
 
-// GET /api/patients/export - CSV Export route
-router.get("/patients-export", requireAuth(["admin", "super_admin", "doctor"]), async (req, res) => {
+// GET /api/patients-export - CSV / Excel Export route with all typed advice and remarks
+router.get("/patients-export", requireAuth(), async (req, res) => {
   try {
-    const { date, place, status, advice, gender } = req.query as Record<string, string>;
+    const { date, place, status, advice, gender, search } = req.query as Record<string, string>;
 
     const conditions = [];
-    if (date) conditions.push(eq(patientsTable.date, date));
-    if (place) conditions.push(eq(patientsTable.screeningPlaceCode, place.toUpperCase()));
-    if (status) conditions.push(eq(patientsTable.drStatus, status));
-    if (advice) conditions.push(eq(patientsTable.advice, advice));
-    if (gender) conditions.push(eq(patientsTable.gender, gender));
+    if (date && date.trim()) conditions.push(ilike(patientsTable.date, `%${date.trim()}%`));
+    if (place && place.trim()) conditions.push(ilike(patientsTable.screeningPlaceCode, `%${place.trim()}%`));
+    if (status && status.trim()) conditions.push(ilike(patientsTable.drStatus, `%${status.trim()}%`));
+    if (advice && advice.trim()) conditions.push(ilike(patientsTable.advice, `%${advice.trim()}%`));
+    if (gender && gender.trim()) conditions.push(ilike(patientsTable.gender, `%${gender.trim()}%`));
+    if (search && search.trim()) {
+      conditions.push(
+        or(
+          ilike(patientsTable.name, `%${search.trim()}%`),
+          ilike(patientsTable.uniqueId, `%${search.trim()}%`),
+          ilike(patientsTable.phone, `%${search.trim()}%`),
+          ilike(patientsTable.address, `%${search.trim()}%`),
+          ilike(patientsTable.advice, `%${search.trim()}%`),
+          ilike(patientsTable.remarks, `%${search.trim()}%`),
+          ilike(patientsTable.baseHospitalRemarks, `%${search.trim()}%`)
+        )
+      );
+    }
 
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
     const list = await db
-      .select()
+      .select({
+        id: patientsTable.id,
+        uniqueId: patientsTable.uniqueId,
+        date: patientsTable.date,
+        screeningPlaceCode: patientsTable.screeningPlaceCode,
+        campName: screeningPlacesTable.name,
+        serialNumber: patientsTable.serialNumber,
+        name: patientsTable.name,
+        age: patientsTable.age,
+        gender: patientsTable.gender,
+        address: patientsTable.address,
+        phone: patientsTable.phone,
+        diabetesDuration: patientsTable.diabetesDuration,
+        bloodPressure: patientsTable.bloodPressure,
+        drStatus: patientsTable.drStatus,
+        advice: patientsTable.advice,
+        referToBaseHospital: patientsTable.referToBaseHospital,
+        baseHospitalRemarks: patientsTable.baseHospitalRemarks,
+        remarks: patientsTable.remarks,
+        referralStatus: patientsTable.referralStatus,
+        imageQuality: patientsTable.imageQuality,
+        imagePath: patientsTable.imagePath,
+        latitude: patientsTable.latitude,
+        longitude: patientsTable.longitude,
+        createdBy: systemUsersTable.name,
+        createdAt: patientsTable.createdAt,
+      })
       .from(patientsTable)
+      .leftJoin(screeningPlacesTable, eq(sql`UPPER(${patientsTable.screeningPlaceCode})`, sql`UPPER(${screeningPlacesTable.shortCode})`))
+      .leftJoin(systemUsersTable, eq(patientsTable.createdBy, systemUsersTable.id))
       .where(whereClause)
-      .orderBy(desc(patientsTable.createdAt));
+      .orderBy(desc(patientsTable.date), desc(patientsTable.createdAt));
 
-    // Convert list to CSV format
+    // Convert list to clean CSV format with all typed advice and remarks
     const headers = [
-      "Date",
-      "Unique ID",
-      "Name",
-      "Age",
+      "Camp Date",
+      "Unique Patient ID",
+      "Patient Full Name",
+      "Age (Yrs)",
       "Gender",
-      "Phone",
-      "Address",
-      "Place Code",
+      "Mobile Phone",
+      "Address / Village",
+      "Camp Code",
+      "Camp Name",
       "Diabetes Duration",
-      "DR Status",
-      "Advice",
+      "Blood Pressure (mmHg)",
+      "DR Diagnosis / Stage",
+      "Advice & Action Plan (Typed Details)",
+      "Refer to Base Hospital",
+      "Base Hospital Remarks (Typed Notes)",
+      "General Clinical Remarks (Typed Notes)",
       "Referral Status",
-      "Image Quality",
-      "Image Path",
+      "Fundus Image Quality",
+      "Fundus Image URL",
       "GPS Latitude",
-      "GPS Longitude"
+      "GPS Longitude",
+      "Recorded By",
+      "Created Timestamp"
     ];
 
+    const escapeCsv = (val: any) => {
+      if (val === null || val === undefined) return '""';
+      const str = String(val).replace(/\r\n/g, " ").replace(/\n/g, " ").replace(/"/g, '""');
+      return `"${str}"`;
+    };
+
     const rows = list.map(p => [
-      p.date,
-      p.uniqueId,
-      `"${p.name.replace(/"/g, '""')}"`,
+      escapeCsv(p.date),
+      escapeCsv(p.uniqueId),
+      escapeCsv(p.name),
       p.age,
-      p.gender,
-      p.phone,
-      `"${(p.address || "").replace(/"/g, '""')}"`,
-      p.screeningPlaceCode,
-      p.diabetesDuration,
-      p.drStatus,
-      p.advice,
-      p.referralStatus,
-      p.imageQuality,
-      p.imagePath,
-      p.latitude || "",
-      p.longitude || ""
+      escapeCsv(p.gender),
+      escapeCsv(p.phone),
+      escapeCsv(p.address || ""),
+      escapeCsv(p.screeningPlaceCode),
+      escapeCsv(p.campName || p.screeningPlaceCode),
+      escapeCsv(p.diabetesDuration),
+      escapeCsv(p.bloodPressure || "N/A"),
+      escapeCsv(p.drStatus),
+      escapeCsv(p.advice || "N/A"),
+      escapeCsv(p.referToBaseHospital ? "Yes (Referred to Base Hospital)" : "No"),
+      escapeCsv(p.baseHospitalRemarks || ""),
+      escapeCsv(p.remarks || ""),
+      escapeCsv(p.referralStatus || "Referred"),
+      escapeCsv(p.imageQuality || "Good"),
+      escapeCsv(p.imagePath || ""),
+      escapeCsv(p.latitude || ""),
+      escapeCsv(p.longitude || ""),
+      escapeCsv(p.createdBy || "Field Screener"),
+      escapeCsv(p.createdAt ? new Date(p.createdAt).toISOString() : "")
     ]);
 
-    const csvContent = [headers.join(","), ...rows.map(r => r.join(","))].join("\n");
+    const csvContent = "\uFEFF" + [headers.join(","), ...rows.map(r => r.join(","))].join("\r\n");
 
-    res.setHeader("Content-Type", "text/csv");
-    res.setHeader("Content-Disposition", `attachment; filename="DRSMS_Export_${Date.now()}.csv"`);
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", `attachment; filename="DRSMS_Patient_Report_${Date.now()}.csv"`);
     res.status(200).send(csvContent);
   } catch (err: any) {
     res.status(500).json({ error: "Failed to export patients: " + err.message });

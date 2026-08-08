@@ -1,5 +1,5 @@
 import { db, patientsTable } from "@workspace/db";
-import { asc } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 import { logger } from "./logger";
 
 /**
@@ -57,7 +57,7 @@ export async function migrateExistingPatientIds(): Promise<void> {
         await db
           .update(patientsTable)
           .set({ uniqueId: tempId, serialNumber: serialNum })
-          .where(asc(patientsTable.id));
+          .where(eq(patientsTable.id, p.id));
       }
     }
 
@@ -92,7 +92,7 @@ export async function migrateExistingPatientIds(): Promise<void> {
           serialNumber: serialNum,
           screeningPlaceCode: campCode,
         })
-        .where(asc(patientsTable.id));
+        .where(eq(patientsTable.id, p.id));
     }
 
     logger.info("All existing patient records successfully updated to SEH/CAMPCODE/DATE/SERIAL standard!");

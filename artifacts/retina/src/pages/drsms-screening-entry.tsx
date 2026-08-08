@@ -114,6 +114,7 @@ export default function DrsmsScreeningEntry() {
   const [vcModalOpen, setVcModalOpen] = useState(false);
   const [vcReferrals, setVcReferrals] = useState<any[]>([]);
   const [loadingVcReferrals, setLoadingVcReferrals] = useState(false);
+  const [appliedReferralId, setAppliedReferralId] = useState<number | null>(null);
 
   // Camp search query
   const [searchQuery, setSearchQuery] = useState("");
@@ -124,7 +125,7 @@ export default function DrsmsScreeningEntry() {
     setLoadingVcReferrals(true);
     try {
       const token = localStorage.getItem("vision2020_token");
-      const res = await fetch(`/api/vc-referrals?targetCampCode=${activeCampCode}`, {
+      const res = await fetch(`/api/vc-referrals?targetCampCode=${encodeURIComponent(activeCampCode)}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.ok) {
@@ -139,14 +140,16 @@ export default function DrsmsScreeningEntry() {
   };
 
   const handleApplyReferral = (refItem: any) => {
+    setAppliedReferralId(refItem.id);
     setValue("patientName", refItem.patientName);
     setValue("age", Number(refItem.age));
     setValue("gender", refItem.gender);
-    setValue("phone", refItem.phone);
-    if (refItem.address) setValue("address", refItem.address);
+    setValue("phone", refItem.phone === "N/A" ? "" : refItem.phone);
+    if (refItem.address || refItem.village) setValue("address", refItem.address || refItem.village);
+    if (refItem.drNotes) setValue("remarks", refItem.drNotes);
     toast({
-      title: "Referral Loaded!",
-      description: `Auto-filled details for ${refItem.patientName} referred by ${refItem.visionCenterName || refItem.visionCenterCode}.`
+      title: "Referral Loaded! 📋",
+      description: `Auto-filled details for ${refItem.patientName} referred by ${refItem.phcName || refItem.visionCenterName || refItem.visionCenterCode}.`
     });
     setVcModalOpen(false);
   };
@@ -309,35 +312,46 @@ export default function DrsmsScreeningEntry() {
     });
   }, [setValue]);
 
-  // Sync camp code
+  // Sync camp code and camp date
   useEffect(() => {
     if (activeCampCode) {
       setValue("screeningPlaceCode", activeCampCode);
       localStorage.setItem("activeCampCode", activeCampCode);
+      const camp = places.find(p => p.shortCode === activeCampCode);
+      if (camp) {
+        const cDate = camp.campDate || (camp.createdAt ? new Date(camp.createdAt).toISOString().split("T")[0] : new Date().toISOString().split("T")[0]);
+        setValue("date", cDate);
+      }
     } else {
       localStorage.removeItem("activeCampCode");
     }
-  }, [activeCampCode, setValue]);
+  }, [activeCampCode, places, setValue]);
 
-  // Load Next Serial
+  // Load Next Serial using camp date
   useEffect(() => {
-    if (!selectedPlace || !selectedDate) return;
+    if (!selectedPlace) return;
+    const camp = places.find(p => p.shortCode === selectedPlace);
+    const effectiveDate = camp?.campDate || (camp?.createdAt ? new Date(camp.createdAt).toISOString().split("T")[0] : selectedDate || new Date().toISOString().split("T")[0]);
+    
     const fetchSerial = async () => {
       try {
         const token = localStorage.getItem("vision2020_token");
-        const res = await fetch(`/api/patients/next-serial?placeCode=${selectedPlace}&date=${selectedDate}`, {
+        const res = await fetch(`/api/patients/next-serial?placeCode=${selectedPlace}&date=${effectiveDate}`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         if (res.ok) {
           const data = await res.json();
           setSerialInfo(data);
+          if (data.campDate) {
+            setValue("date", data.campDate);
+          }
         }
       } catch (err) {
         console.error(err);
       }
     };
     fetchSerial();
-  }, [selectedPlace, selectedDate]);
+  }, [selectedPlace, selectedDate, places, setValue]);
 
   // Phone warning
   useEffect(() => {
@@ -466,13 +480,16 @@ export default function DrsmsScreeningEntry() {
         referralStatus: "Referred",
         referToBaseHospital: values.referToBaseHospital
       };
+      const activeCampObj = places.find(p => p.shortCode === (activeCampCode || values.screeningPlaceCode));
+      const campEffectiveDate = activeCampObj?.campDate || (activeCampObj?.createdAt ? new Date(activeCampObj.createdAt).toISOString().split("T")[0] : values.date || new Date().toISOString().split("T")[0]);
+
       try {
         await offlineDB.addEntry(offlineEntry);
         offlineDB.clearDraft();
         setImageFile(null);
         setImagePreview(null);
         reset({
-          date: new Date().toISOString().split("T")[0],
+          date: campEffectiveDate,
           screeningPlaceCode: activeCampCode || "",
           patientName: "",
           age: 45,
@@ -486,6 +503,9 @@ export default function DrsmsScreeningEntry() {
           advice: "Annual Review",
           imageQuality: "Good",
           referToBaseHospital: false,
+          baseHospitalRemarks: "",
+          otherAdvice: "",
+          remarks: "",
           latitude: "",
           longitude: ""
         });
@@ -516,6 +536,9 @@ export default function DrsmsScreeningEntry() {
         remoteImagePath = imagePreview || "/uploads/no_fundus_photo.png";
       }
 
+      const activeCampObj = places.find(p => p.shortCode === (activeCampCode || values.screeningPlaceCode));
+      const campEffectiveDate = activeCampObj?.campDate || (activeCampObj?.createdAt ? new Date(activeCampObj.createdAt).toISOString().split("T")[0] : values.date || new Date().toISOString().split("T")[0]);
+
       const bloodPressureStr = (values.systolicBP?.trim() || values.diastolicBP?.trim()) ? `${values.systolicBP || ""}/${values.diastolicBP || ""}` : null;
       const res = await fetch("/api/patients", {
         method: "POST",
@@ -524,7 +547,7 @@ export default function DrsmsScreeningEntry() {
           Authorization: `Bearer ${token}`
         },
         body: JSON.stringify({
-          date: values.date,
+          date: campEffectiveDate,
           screeningPlaceCode: values.screeningPlaceCode,
           name: values.patientName,
           age: values.age,
@@ -551,11 +574,30 @@ export default function DrsmsScreeningEntry() {
         throw new Error(errJson.error || "Failed to save record");
       }
 
+      const resData = await res.json().catch(() => ({}));
+      const createdPatientId = resData.patient?.id;
+
+      if (appliedReferralId && createdPatientId) {
+        try {
+          await fetch(`/api/vc-referrals/${appliedReferralId}/convert`, {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`
+            },
+            body: JSON.stringify({ patientId: createdPatientId })
+          });
+        } catch (err) {
+          console.error("Failed to convert referral:", err);
+        }
+        setAppliedReferralId(null);
+      }
+
       offlineDB.clearDraft();
       setImageFile(null);
       setImagePreview(null);
       reset({
-        date: new Date().toISOString().split("T")[0],
+        date: campEffectiveDate,
         screeningPlaceCode: activeCampCode || "",
         patientName: "",
         age: 45,
@@ -569,10 +611,13 @@ export default function DrsmsScreeningEntry() {
         advice: "Annual Review",
         imageQuality: "Good",
         referToBaseHospital: false,
+        baseHospitalRemarks: "",
+        otherAdvice: "",
+        remarks: "",
         latitude: "",
         longitude: ""
       });
-      toast({ title: "Patient Screened", description: "Patient records successfully saved to central server." });
+      toast({ title: "Patient Screened", description: `Patient records successfully saved for camp date ${campEffectiveDate}.` });
     } catch (err: any) {
       toast({ title: "Submission Failed", description: err.message, variant: "destructive" });
     } finally {
@@ -650,14 +695,17 @@ export default function DrsmsScreeningEntry() {
                   <button
                     key={p.id}
                     onClick={() => {
+                      const cDate = p.campDate || (p.createdAt ? new Date(p.createdAt).toISOString().split("T")[0] : new Date().toISOString().split("T")[0]);
                       setActiveCampCode(p.shortCode);
-                      toast({ title: "Camp Opened", description: `Campsite session ${p.name} activated.` });
+                      setValue("screeningPlaceCode", p.shortCode);
+                      setValue("date", cDate);
+                      toast({ title: "Camp Opened", description: `Campsite session ${p.name} activated for camp date ${cDate}.` });
                     }}
                     className="w-full text-left p-3.5 bg-white border border-slate-200 hover:border-orange-500 rounded-xl flex items-center justify-between transition-all group hover:bg-orange-50/20"
                   >
                     <div>
                       <p className="text-xs font-bold text-slate-800">{p.name}</p>
-                      <p className="text-[10px] text-slate-400 font-medium mt-0.5">Code: {p.shortCode} • Type: {p.placeType}</p>
+                      <p className="text-[10px] text-slate-400 font-medium mt-0.5">Code: {p.shortCode} • Date: {p.campDate || (p.createdAt ? new Date(p.createdAt).toISOString().split("T")[0] : "Today")}</p>
                     </div>
                     <span className="text-[10px] font-bold text-[#FF6B00] bg-orange-50 border border-orange-200 px-2.5 py-1 rounded-lg group-hover:bg-[#FF6B00] group-hover:text-white transition-colors">
                       Open Camp
@@ -672,7 +720,9 @@ export default function DrsmsScreeningEntry() {
     );
   }
 
-  const activeCampName = places.find(p => p.shortCode === activeCampCode)?.name || activeCampCode;
+  const activeCamp = places.find(p => p.shortCode === activeCampCode);
+  const activeCampName = activeCamp?.name || activeCampCode;
+  const activeCampDate = activeCamp?.campDate || (activeCamp?.createdAt ? new Date(activeCamp.createdAt).toISOString().split("T")[0] : new Date().toISOString().split("T")[0]);
 
   return (
     <div className="flex-1 p-4 md:p-6 space-y-6 overflow-y-auto bg-slate-50/50 pb-20 md:pb-6">
@@ -684,7 +734,9 @@ export default function DrsmsScreeningEntry() {
           </div>
           <div>
             <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Active Camp Session</p>
-            <p className="text-xs font-extrabold text-slate-800">{activeCampName} ({activeCampCode})</p>
+            <p className="text-xs font-extrabold text-slate-800">
+              {activeCampName} ({activeCampCode}) • <span className="text-[#FF6B00] font-mono font-bold">📅 Camp Date: {activeCampDate}</span>
+            </p>
           </div>
         </div>
 
@@ -696,7 +748,7 @@ export default function DrsmsScreeningEntry() {
             }}
             className="bg-orange-50 hover:bg-orange-100 text-[#FF6B00] border border-orange-200 text-[10px] sm:text-xs h-8 font-bold px-3 rounded-lg flex items-center gap-1.5 shadow-none"
           >
-            <User className="h-3.5 w-3.5" /> Referrals from VCs / ASHA Workers
+            <User className="h-3.5 w-3.5" /> Referrals from Ophthalmic Officers / VCs / ASHA Workers
           </Button>
 
           <Button
@@ -721,12 +773,22 @@ export default function DrsmsScreeningEntry() {
         {/* Section 1: Demographics */}
         <Card className="rounded-xl border border-slate-200 shadow-sm bg-white overflow-hidden">
           <CardHeader className="bg-gradient-to-r from-orange-500/10 to-[#FF6B00]/5 py-3.5 border-b border-slate-100">
-            <div className="flex items-center gap-2">
-              <User className="h-4.5 w-4.5 text-[#FF6B00]" />
-              <div>
-                <CardTitle className="text-xs font-bold text-slate-800 uppercase tracking-wider">Section 1: Patient Demographics</CardTitle>
-                <CardDescription className="text-[10px]">Enter primary identification and contact metrics.</CardDescription>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <User className="h-4.5 w-4.5 text-[#FF6B00]" />
+                <div>
+                  <CardTitle className="text-xs font-bold text-slate-800 uppercase tracking-wider">Section 1: Patient Demographics</CardTitle>
+                  <CardDescription className="text-[10px]">Primary metrics locked to Camp Date: <strong className="text-slate-800">{activeCampDate}</strong></CardDescription>
+                </div>
               </div>
+              {serialInfo?.uniqueId && (
+                <div className="text-right">
+                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">Assigned ID (Camp Date)</span>
+                  <span className="font-mono text-xs font-extrabold text-[#FF6B00] bg-orange-50 px-2.5 py-1 rounded-lg border border-orange-200 shadow-2xs">
+                    {serialInfo.uniqueId}
+                  </span>
+                </div>
+              )}
             </div>
           </CardHeader>
           <CardContent className="p-4 md:p-6 space-y-4 text-xs">
@@ -1193,7 +1255,7 @@ export default function DrsmsScreeningEntry() {
           <Card className="w-full max-w-xl bg-white rounded-xl shadow-xl border border-slate-200 overflow-hidden">
             <CardHeader className="flex flex-row justify-between items-center py-4 border-b border-slate-100 bg-orange-50/50">
               <div>
-                <CardTitle className="text-base font-bold text-slate-900">Referred Patients (VCs & ASHA Workers)</CardTitle>
+                <CardTitle className="text-base font-bold text-slate-900">Referred Patients (Ophthalmic Officers, VCs & ASHA Workers)</CardTitle>
                 <CardDescription className="text-[11px]">Active DR Camp: {activeCampName} ({activeCampCode})</CardDescription>
               </div>
               <button onClick={() => setVcModalOpen(false)} className="text-slate-400 hover:text-slate-600">
@@ -1211,15 +1273,16 @@ export default function DrsmsScreeningEntry() {
               ) : (
                 vcReferrals.map((item) => {
                   const isAsha = item.referrerType === "asha_worker";
+                  const isOphthalmic = item.referrerType === "ophthalmic_officer";
                   return (
                     <div key={item.id} className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl hover:border-[#FF6B00] transition-all flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                       <div className="space-y-1">
                         <div className="flex items-center gap-2">
                           <span className="font-extrabold text-sm text-slate-900">{item.patientName}</span>
                           <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                            isAsha ? "bg-rose-100 text-rose-800" : "bg-blue-100 text-blue-800"
+                            isOphthalmic ? "bg-amber-100 text-amber-900 border border-amber-300" : isAsha ? "bg-rose-100 text-rose-800" : "bg-blue-100 text-blue-800"
                           }`}>
-                            {isAsha ? "ASHA Worker" : "Vision Center"}
+                            {isOphthalmic ? "Ophthalmic Officer" : isAsha ? "ASHA Worker" : "Vision Center"}
                           </span>
                           <span className="text-[10px] bg-slate-200 text-slate-700 font-bold px-2 py-0.5 rounded-full">
                             {item.age} yrs • {item.gender}
@@ -1231,7 +1294,7 @@ export default function DrsmsScreeningEntry() {
                         </p>
 
                         <div className="flex flex-wrap gap-2 text-[10px] text-slate-500 font-semibold">
-                          <span>Source: <strong className="text-slate-800">{isAsha ? item.phcName || "ASHA Worker" : item.visionCenterName || item.visionCenterCode}</strong> ({item.referralDate})</span>
+                          <span>Source: <strong className="text-slate-800">{isOphthalmic ? "Ophthalmic Officer" : isAsha ? item.phcName || "ASHA Worker" : item.visionCenterName || item.visionCenterCode}</strong> ({item.referralDate})</span>
                           {item.randomBloodSugar && (
                             <span className="text-indigo-700 font-bold bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-100">
                               RBS: {item.randomBloodSugar} mg/dL

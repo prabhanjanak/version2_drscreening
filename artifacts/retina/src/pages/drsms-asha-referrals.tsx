@@ -309,7 +309,7 @@ export default function DrsmsAshaReferrals() {
                   ) : (
                     camps.map((c) => (
                       <option key={c.shortCode} value={c.shortCode}>
-                        🏥 {c.placeName} ({c.shortCode}) — {c.taluk || c.district || "Camp"}
+                        🏥 {c.name || c.placeName || c.shortCode} ({c.shortCode}) — {c.taluk || c.district || "Camp"}
                       </option>
                     ))
                   )}

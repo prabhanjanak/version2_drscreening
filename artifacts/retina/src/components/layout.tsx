@@ -83,9 +83,9 @@ export function AppLayout({ children }: LayoutProps) {
       items.push({ label: "Vision Centers", href: "/vision-centers", icon: Building2 });
     }
 
-    // Patient Referral Portal (ASHA Workers, Vision Centers, Outreach & Management)
+    // Patient Referral Portal (Ophthalmic Officers, ASHA Workers, Vision Centers, Outreach & Management)
     if (type === "super_admin" || type === "admin" || type === "admin_unit" || type === "unit_head" || type === "outreach" || type === "vision_center") {
-      items.push({ label: "Patient Referral", href: "/asha-referrals", icon: Heart });
+      items.push({ label: "Ophthalmic & ASHA Referrals", href: "/asha-referrals", icon: Heart });
       items.push({ label: "Follow Up", href: "/follow-up", icon: PhoneCall });
     }
 

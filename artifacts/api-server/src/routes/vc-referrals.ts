@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { eq, and, inArray, desc } from "drizzle-orm";
+import { eq, and, inArray, desc, ilike, sql } from "drizzle-orm";
 import { db, vcReferralsTable, visionCentersTable, screeningPlacesTable } from "@workspace/db";
 import { requireAuth } from "../middlewares/requireAuth";
 
@@ -11,24 +11,24 @@ router.get("/vc-referrals", requireAuth(), async (req, res) => {
     const { targetCampCode, visionCenterCode, sankaraUnit, status, referrerType } = req.query;
 
     let conditions = [];
-    if (typeof targetCampCode === "string" && targetCampCode) {
-      conditions.push(eq(vcReferralsTable.targetCampCode, targetCampCode));
+    if (typeof targetCampCode === "string" && targetCampCode.trim()) {
+      conditions.push(ilike(vcReferralsTable.targetCampCode, targetCampCode.trim()));
     }
-    if (typeof visionCenterCode === "string" && visionCenterCode) {
-      conditions.push(eq(vcReferralsTable.visionCenterCode, visionCenterCode));
+    if (typeof visionCenterCode === "string" && visionCenterCode.trim()) {
+      conditions.push(ilike(vcReferralsTable.visionCenterCode, visionCenterCode.trim()));
     }
-    if (typeof status === "string" && status) {
-      conditions.push(eq(vcReferralsTable.status, status));
+    if (typeof status === "string" && status.trim() && status !== "all") {
+      conditions.push(eq(vcReferralsTable.status, status.trim()));
     }
-    if (typeof referrerType === "string" && referrerType) {
-      conditions.push(eq(vcReferralsTable.referrerType, referrerType));
+    if (typeof referrerType === "string" && referrerType.trim()) {
+      conditions.push(eq(vcReferralsTable.referrerType, referrerType.trim()));
     }
 
     // Filter by unit if requested or scoped
-    if (typeof sankaraUnit === "string" && sankaraUnit) {
+    if (typeof sankaraUnit === "string" && sankaraUnit.trim()) {
       const unitVCs = await db.select({ shortCode: visionCentersTable.shortCode })
         .from(visionCentersTable)
-        .where(eq(visionCentersTable.sankaraUnit, sankaraUnit));
+        .where(eq(visionCentersTable.sankaraUnit, sankaraUnit.trim()));
       const vcCodes = unitVCs.map(v => v.shortCode);
       if (vcCodes.length > 0) {
         conditions.push(inArray(vcReferralsTable.visionCenterCode, vcCodes));
@@ -42,6 +42,7 @@ router.get("/vc-referrals", requireAuth(), async (req, res) => {
       gender: vcReferralsTable.gender,
       phone: vcReferralsTable.phone,
       address: vcReferralsTable.address,
+      village: vcReferralsTable.village,
       visionCenterId: vcReferralsTable.visionCenterId,
       visionCenterCode: vcReferralsTable.visionCenterCode,
       visionCenterName: visionCentersTable.name,
@@ -59,7 +60,7 @@ router.get("/vc-referrals", requireAuth(), async (req, res) => {
     })
     .from(vcReferralsTable)
     .leftJoin(visionCentersTable, eq(vcReferralsTable.visionCenterId, visionCentersTable.id))
-    .leftJoin(screeningPlacesTable, eq(vcReferralsTable.targetCampCode, screeningPlacesTable.shortCode))
+    .leftJoin(screeningPlacesTable, eq(sql`UPPER(${vcReferralsTable.targetCampCode})`, sql`UPPER(${screeningPlacesTable.shortCode})`))
     .where(conditions.length > 0 ? and(...conditions) : undefined)
     .orderBy(desc(vcReferralsTable.createdAt));
 
@@ -73,24 +74,25 @@ router.get("/vc-referrals", requireAuth(), async (req, res) => {
 router.post("/vc-referrals", requireAuth(), async (req, res) => {
   try {
     const {
-      patientName, age, gender, phone, address,
+      patientName, age, gender, phone, address, village,
       visionCenterCode, targetCampCode, referralDate, drNotes,
       referrerType, phcName, randomBloodSugar, symptoms
     } = req.body;
 
-    if (!patientName || !age || !gender || !phone || !targetCampCode) {
-      res.status(400).json({ error: "Missing required referral fields (patientName, age, gender, phone, targetCampCode)" });
+    if (!patientName || !age || !gender || !targetCampCode) {
+      res.status(400).json({ error: "Missing required referral fields (patientName, age, gender, targetCampCode)" });
       return;
     }
 
     const userType = req.user?.userType || "outreach";
     const effectiveReferrerType = referrerType || (userType === "asha_worker" ? "asha_worker" : userType === "ophthalmic_officer" ? "ophthalmic_officer" : "vision_center");
     const effectiveVcCode = (visionCenterCode || req.user?.assignedPlace || "OUTREACH_REFERRAL").toUpperCase().trim();
+    const cleanCampCode = targetCampCode.toUpperCase().trim();
 
     // Lookup vision center if code provided
     let vcId: number | null = null;
     if (effectiveVcCode && effectiveVcCode !== "OUTREACH_REFERRAL" && effectiveVcCode !== "ASHA_WORKER") {
-      const [vc] = await db.select().from(visionCentersTable).where(eq(visionCentersTable.shortCode, effectiveVcCode));
+      const [vc] = await db.select().from(visionCentersTable).where(eq(sql`UPPER(${visionCentersTable.shortCode})`, effectiveVcCode));
       if (vc) {
         vcId = vc.id;
       }
@@ -99,21 +101,21 @@ router.post("/vc-referrals", requireAuth(), async (req, res) => {
     const today = new Date().toISOString().split("T")[0];
 
     const [created] = await db.insert(vcReferralsTable).values({
-      patientName,
-      age: parseInt(age, 10),
-      gender,
-      phone,
-      address: address || null,
-      village: address || null,
+      patientName: patientName.trim(),
+      age: parseInt(String(age), 10) || 45,
+      gender: gender || "Female",
+      phone: phone ? phone.trim() : "N/A",
+      address: (address || village || "").trim() || null,
+      village: (village || address || "").trim() || null,
       visionCenterId: vcId,
       visionCenterCode: effectiveVcCode,
       referrerType: effectiveReferrerType,
-      phcName: phcName || null,
-      randomBloodSugar: randomBloodSugar || null,
-      symptoms: symptoms || null,
-      targetCampCode,
+      phcName: phcName ? phcName.trim() : null,
+      randomBloodSugar: randomBloodSugar ? randomBloodSugar.trim() : null,
+      symptoms: symptoms ? symptoms.trim() : null,
+      targetCampCode: cleanCampCode,
       referralDate: referralDate || today,
-      drNotes: drNotes || null,
+      drNotes: drNotes ? drNotes.trim() : null,
       status: "pending",
       createdBy: req.user?.id || null,
     }).returning();
@@ -128,12 +130,16 @@ router.post("/vc-referrals", requireAuth(), async (req, res) => {
 router.patch("/vc-referrals/:id/convert", requireAuth(), async (req, res) => {
   try {
     const id = parseInt(req.params["id"] as string, 10);
+    if (isNaN(id)) {
+      res.status(400).json({ error: "Invalid referral ID" });
+      return;
+    }
     const { patientId } = req.body;
 
     const [updated] = await db.update(vcReferralsTable)
       .set({
         status: "completed",
-        convertedPatientId: patientId ? parseInt(patientId, 10) : null,
+        convertedPatientId: patientId ? parseInt(String(patientId), 10) : null,
       })
       .where(eq(vcReferralsTable.id, id))
       .returning();

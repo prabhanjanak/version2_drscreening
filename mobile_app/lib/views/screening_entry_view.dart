@@ -247,14 +247,14 @@ class _ScreeningEntryViewState extends State<ScreeningEntryView> {
       return;
     }
 
-    setState(() => _isSaving = true);
-
-    final now = DateTime.now();
-    final dateStr = DateFormat('yyyy-MM-dd').format(now);
-    final dd = now.day.toString().padLeft(2, '0');
-    final mm = now.month.toString().padLeft(2, '0');
-    final yyyy = now.year.toString();
+    final campDateStr = _selectedCamp!.campDate ?? (_selectedCamp!.createdAt != null ? DateFormat('yyyy-MM-dd').format(DateTime.parse(_selectedCamp!.createdAt!)) : DateFormat('yyyy-MM-dd').format(DateTime.now()));
+    final dateParts = campDateStr.split('-');
+    final dd = dateParts.length == 3 ? dateParts[2].padLeft(2, '0') : '01';
+    final mm = dateParts.length == 3 ? dateParts[1].padLeft(2, '0') : '01';
+    final yyyy = dateParts.length == 3 ? dateParts[0] : '2026';
     final dateFormatted = "$dd$mm$yyyy";
+    final dateStr = campDateStr;
+    final now = DateTime.now();
     final serialNo = (now.millisecondsSinceEpoch % 9999) + 1;
     final serialPadded = serialNo.toString().padLeft(4, '0');
     final campCode = _selectedCamp!.shortCode.toUpperCase().trim();
