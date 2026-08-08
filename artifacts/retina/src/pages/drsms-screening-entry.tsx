@@ -1268,10 +1268,10 @@ export default function DrsmsScreeningEntry() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs font-black text-slate-900 uppercase flex items-center gap-1.5">
-                    <Camera className="h-4 w-4 text-[#FF6B00]" /> Retinal Fundus Photography Captured? *
+                    <Camera className="h-4 w-4 text-[#FF6B00]" /> Retinal Fundus Image Taken? *
                   </p>
                   <p className="text-[10px] text-slate-500">
-                    Toggle YES if retinal photo was taken at camp, or NO if uncaptured / deferred to Base Hospital.
+                    Select YES if retinal photo was taken at the camp, or NO if uncaptured / deferred.
                   </p>
                 </div>
 
@@ -1285,18 +1285,23 @@ export default function DrsmsScreeningEntry() {
                         : "bg-white border-slate-300 text-slate-700 hover:bg-slate-100"
                     }`}
                   >
-                    YES (Captured)
+                    YES (Image Taken)
                   </button>
                   <button
                     type="button"
-                    onClick={() => handleFieldChange("fundusCaptured", false)}
+                    onClick={() => {
+                      handleFieldChange("fundusCaptured", false);
+                      setImageFile(null);
+                      setImagePreview(null);
+                      handleFieldChange("imagePath", "");
+                    }}
                     className={`px-4 py-1.5 text-xs font-black rounded-lg border transition-all ${
                       !watch("fundusCaptured") 
                         ? "bg-amber-600 border-amber-600 text-white shadow-2xs" 
                         : "bg-white border-slate-300 text-slate-700 hover:bg-slate-100"
                     }`}
                   >
-                    NO (Not Captured)
+                    NO (Not Taken)
                   </button>
                 </div>
               </div>
@@ -1305,7 +1310,7 @@ export default function DrsmsScreeningEntry() {
               {!watch("fundusCaptured") && (
                 <div className="pt-3 border-t border-slate-200 space-y-1">
                   <label className="block text-[10px] font-bold text-amber-900 uppercase">
-                    Reason Fundus Was Not Captured *
+                    Reason Fundus Image Was Not Taken *
                   </label>
                   <select
                     value={watch("fundusNotCapturedReason") || ""}
@@ -1320,89 +1325,92 @@ export default function DrsmsScreeningEntry() {
                 </div>
               )}
 
-              {/* If YES captured, offer optional preview / Remidio sync */}
+              {/* If YES captured, show high-resolution Image Upload Panel */}
               {watch("fundusCaptured") && (
                 <div className="pt-3 border-t border-slate-200 space-y-3">
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      type="button"
-                      onClick={() => document.getElementById("camera-input")?.click()}
-                      className="bg-[#FF6B00] hover:bg-orange-600 text-white font-bold h-8 text-xs rounded-lg flex items-center gap-1 shadow-2xs"
-                    >
-                      <Camera className="h-3.5 w-3.5" /> Camera Capture
-                    </Button>
-                    <Button
-                      type="button"
-                      onClick={async () => {
-                        try {
-                          const token = localStorage.getItem("vision2020_token");
-                          const currentId = serialInfo?.uniqueId || "";
-                          const res = await fetch(`/api/integrations/remidio/fetch?visitId=${encodeURIComponent(currentId)}&phone=${watch("phone") || ""}`, {
-                            headers: { Authorization: `Bearer ${token}` }
-                          });
-                          if (res.ok) {
-                            const result = await res.json();
-                            const odImg = result.data?.images?.[0]?.imageUrl || "placeholder_fundus.jpg";
-                            setImagePreview(odImg);
-                            toast({
-                              title: "Remidio Camera Synced! 📸",
-                              description: `Fetched fundus image from ${result.data?.deviceModel || "Remidio Camera"}.`
-                            });
-                          }
-                        } catch (err) {
-                          toast({ title: "Remidio Sync", description: "Camera fetch completed or upload image manually.", variant: "destructive" });
-                        }
-                      }}
-                      className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold h-8 text-xs rounded-lg flex items-center gap-1 shadow-2xs"
-                    >
-                      <Activity className="h-3.5 w-3.5" /> Sync Remidio Camera
-                    </Button>
-                    <Button
-                      type="button"
-                      onClick={() => document.getElementById("file-input")?.click()}
-                      className="bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 font-semibold h-8 text-xs rounded-lg flex items-center gap-1"
-                    >
-                      <Upload className="h-3.5 w-3.5" /> Select File
-                    </Button>
+                  <div className="border-2 border-dashed border-orange-200 bg-orange-50/30 p-4 rounded-xl flex flex-col items-center justify-center text-center gap-3">
+                    {!imagePreview ? (
+                      <>
+                        <div className="h-12 w-12 rounded-full bg-orange-100 flex items-center justify-center text-[#FF6B00]">
+                          <Camera className="h-6 w-6" />
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold text-slate-800">Upload High-Resolution Retinal Fundus Photo</p>
+                          <p className="text-[10px] text-slate-500 mt-0.5">
+                            High-definition retinal images are automatically scaled to full resolution and fitted properly.
+                          </p>
+                        </div>
+
+                        <div className="flex flex-wrap gap-2 justify-center pt-1">
+                          <Button
+                            type="button"
+                            onClick={() => document.getElementById("camera-input")?.click()}
+                            className="bg-[#FF6B00] hover:bg-orange-600 text-white font-bold h-8 text-xs rounded-lg flex items-center gap-1.5 shadow-2xs"
+                          >
+                            <Camera className="h-3.5 w-3.5" /> Camera Capture
+                          </Button>
+                          <Button
+                            type="button"
+                            onClick={() => document.getElementById("file-input")?.click()}
+                            className="bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 font-bold h-8 text-xs rounded-lg flex items-center gap-1.5 shadow-2xs"
+                          >
+                            <Upload className="h-3.5 w-3.5" /> Select Image File
+                          </Button>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="w-full flex flex-col items-center gap-3">
+                        <div className="relative rounded-xl overflow-hidden border border-slate-200 bg-slate-950 p-1 shadow-md max-w-sm w-full">
+                          <img
+                            src={imagePreview}
+                            alt="Fundus Full Resolution Preview"
+                            className="w-full h-56 object-contain rounded-lg cursor-pointer"
+                            onClick={() => setFullscreenImage(imagePreview)}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setImageFile(null);
+                              setImagePreview(null);
+                              handleFieldChange("imagePath", "");
+                            }}
+                            className="absolute top-2 right-2 p-1.5 bg-red-600/90 hover:bg-red-700 text-white rounded-full shadow-md"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
+                            Full Resolution Fitted ✓
+                          </span>
+                          <Button
+                            type="button"
+                            onClick={() => document.getElementById("file-input")?.click()}
+                            variant="outline"
+                            className="h-7 text-[10px] font-bold border-slate-300 bg-white"
+                          >
+                            Replace Image
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+
+                    <input
+                      id="camera-input"
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      className="hidden"
+                      onChange={handleImageSelect}
+                    />
+                    <input
+                      id="file-input"
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleImageSelect}
+                    />
                   </div>
-
-                  <input
-                    id="camera-input"
-                    type="file"
-                    accept="image/*"
-                    capture="environment"
-                    className="hidden"
-                    onChange={handleImageSelect}
-                  />
-                  <input
-                    id="file-input"
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={handleImageSelect}
-                  />
-
-                  {imagePreview && (
-                    <div className="relative inline-block mt-2">
-                      <img
-                        src={imagePreview}
-                        alt="Fundus Thumbnail Preview"
-                        className="h-24 w-24 object-cover rounded-lg border border-slate-200 cursor-pointer shadow-xs"
-                        onClick={() => setFullscreenImage(imagePreview)}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setImageFile(null);
-                          setImagePreview(null);
-                          handleFieldChange("imagePath", "");
-                        }}
-                        className="absolute -top-1.5 -right-1.5 p-1 bg-red-100 text-red-600 rounded-full border border-red-200"
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </div>
-                  )}
                 </div>
               )}
             </div>

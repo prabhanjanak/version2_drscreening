@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { 
   Search, Eye, Edit2, Trash2, Calendar, MapPin, 
   Phone, User, ShieldAlert, CheckCircle, ChevronRight,
-  Download, Printer, Filter, Grid, List, RefreshCw, Upload,
+  Download, Printer, Filter, Grid, List, RefreshCw, Upload, Camera,
   Building, Sparkles, Activity, FileText, Check, X
 } from "lucide-react";
 
@@ -149,6 +149,117 @@ export default function DrsmsPatients() {
   const [baseOutcome, setBaseOutcome] = useState("");
   const [baseNotes, setBaseNotes] = useState("");
   const [isSavingBase, setIsSavingBase] = useState(false);
+
+  // Fundus Image Upload Modal State & High-Res Full Image Fit
+  const [uploadModalPatient, setUploadModalPatient] = useState<PatientRecord | null>(null);
+  const [uploadPreview, setUploadPreview] = useState<string | null>(null);
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [isUploadingFundus, setIsUploadingFundus] = useState(false);
+  const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
+
+  const compressFundusImage = (file: File): Promise<File> => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target?.result as string;
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          const ctx = canvas.getContext("2d");
+          let width = img.width;
+          let height = img.height;
+          // Keep high resolution up to 2800px max dimension without distortion
+          const maxDim = 2800;
+          if (width > maxDim || height > maxDim) {
+            if (width > height) {
+              height = Math.round((height * maxDim) / width);
+              width = maxDim;
+            } else {
+              width = Math.round((width * maxDim) / height);
+              height = maxDim;
+            }
+          }
+          canvas.width = width;
+          canvas.height = height;
+          ctx?.drawImage(img, 0, 0, width, height);
+          canvas.toBlob((blob) => {
+            if (blob) {
+              resolve(new File([blob], file.name, { type: "image/jpeg" }));
+            } else {
+              resolve(file);
+            }
+          }, "image/jpeg", 0.92);
+        };
+      };
+    });
+  };
+
+  const handleFundusFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const optimized = await compressFundusImage(file);
+    setUploadFile(optimized);
+    const reader = new FileReader();
+    reader.onload = () => {
+      setUploadPreview(reader.result as string);
+    };
+    reader.readAsDataURL(optimized);
+  };
+
+  const handleSaveFundusUpload = async () => {
+    if (!uploadModalPatient || (!uploadFile && !uploadPreview)) return;
+    setIsUploadingFundus(true);
+    try {
+      const token = localStorage.getItem("vision2020_token");
+      let remoteImagePath = uploadPreview || "";
+
+      if (uploadFile) {
+        const formData = new FormData();
+        formData.append("image", uploadFile);
+        const imgRes = await fetch("/api/patients/upload-image", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+          body: formData
+        });
+        if (!imgRes.ok) throw new Error("Image upload failed");
+        const imgData = await imgRes.json();
+        remoteImagePath = imgData.imagePath;
+      }
+
+      const updateRes = await fetch(`/api/patients/${uploadModalPatient.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          imagePath: remoteImagePath,
+          fundusCaptured: true,
+          fundusNotCapturedReason: null
+        })
+      });
+
+      if (!updateRes.ok) throw new Error("Failed to link fundus image to patient");
+      const updated = await updateRes.json();
+
+      setPatients(prev => prev.map(p => p.id === updated.id ? { ...p, imagePath: remoteImagePath, fundusCaptured: true } : p));
+      setAllPatients(prev => prev.map(p => p.id === updated.id ? { ...p, imagePath: remoteImagePath, fundusCaptured: true } : p));
+
+      setUploadModalPatient(null);
+      setUploadFile(null);
+      setUploadPreview(null);
+
+      toast({
+        title: "Fundus Image Uploaded! 📸",
+        description: `High-resolution retinal image saved and fitted properly for ${updated.name}.`
+      });
+    } catch (err: any) {
+      toast({ title: "Upload Failed", description: err.message, variant: "destructive" });
+    } finally {
+      setIsUploadingFundus(false);
+    }
+  };
 
   const loadInitialData = async () => {
     setLoading(true);
@@ -621,6 +732,24 @@ export default function DrsmsPatients() {
                 <div className="flex items-center gap-1.5">
                   <Button
                     onClick={() => {
+                      setUploadModalPatient(p);
+                      setUploadPreview(p.imagePath && !p.imagePath.includes("no_fundus_photo") && !p.imagePath.includes("placeholder") ? p.imagePath : null);
+                      setUploadFile(null);
+                    }}
+                    className={`h-7 text-[10px] font-black px-2.5 rounded-lg flex items-center gap-1 shadow-2xs transition-all ${
+                      p.imagePath && !p.imagePath.includes("no_fundus_photo") && !p.imagePath.includes("placeholder")
+                        ? "bg-gradient-to-r from-orange-500 to-[#FF6B00] hover:from-[#FF6B00] hover:to-orange-600 text-white"
+                        : "bg-[#FF6B00] hover:bg-orange-600 text-white animate-pulse"
+                    }`}
+                  >
+                    <Camera className="h-3 w-3" />
+                    {p.imagePath && !p.imagePath.includes("no_fundus_photo") && !p.imagePath.includes("placeholder")
+                      ? "Photo 📸"
+                      : "Upload Fundus"}
+                  </Button>
+
+                  <Button
+                    onClick={() => {
                       setActiveBasePatient(p);
                       setBaseOutcome(p.baseHospitalVisitOutcome || "");
                       setBaseNotes(p.baseHospitalNotes || "");
@@ -719,6 +848,25 @@ export default function DrsmsPatients() {
                   </td>
                   <td className="p-3.5 text-right">
                     <div className="flex justify-end items-center gap-1.5">
+                      {/* PROMINENT ORANGE UPLOAD FUNDUS IMAGE BUTTON ON RIGHT SIDE */}
+                      <Button
+                        onClick={() => {
+                          setUploadModalPatient(p);
+                          setUploadPreview(p.imagePath && !p.imagePath.includes("no_fundus_photo") && !p.imagePath.includes("placeholder") ? p.imagePath : null);
+                          setUploadFile(null);
+                        }}
+                        className={`h-7 text-[10px] font-black px-2.5 rounded-lg flex items-center gap-1 shadow-2xs transition-all ${
+                          p.imagePath && !p.imagePath.includes("no_fundus_photo") && !p.imagePath.includes("placeholder")
+                            ? "bg-gradient-to-r from-orange-500 to-[#FF6B00] hover:from-[#FF6B00] hover:to-orange-600 text-white"
+                            : "bg-[#FF6B00] hover:bg-orange-600 text-white animate-pulse"
+                        }`}
+                      >
+                        <Camera className="h-3 w-3" />
+                        {p.imagePath && !p.imagePath.includes("no_fundus_photo") && !p.imagePath.includes("placeholder")
+                          ? "View / Change Photo"
+                          : "Upload Fundus Image"}
+                      </Button>
+
                       <Button
                         onClick={() => {
                           setActiveBasePatient(p);
@@ -756,6 +904,133 @@ export default function DrsmsPatients() {
         </div>
       )}
 
+      {/* DEDICATED HIGH-RESOLUTION FUNDUS IMAGE UPLOAD & FIT MODAL */}
+      {uploadModalPatient && (
+        <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fadeIn">
+          <Card className="w-full max-w-xl bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden">
+            <CardHeader className="bg-gradient-to-r from-orange-500 to-[#FF6B00] text-white p-5">
+              <div className="flex justify-between items-center">
+                <div>
+                  <CardTitle className="text-base font-black flex items-center gap-2">
+                    <Camera className="h-5 w-5" /> Retinal Fundus Photo Upload
+                  </CardTitle>
+                  <CardDescription className="text-orange-100 text-xs mt-0.5">
+                    {uploadModalPatient.name} ({uploadModalPatient.uniqueId}) • Phone: {uploadModalPatient.phone}
+                  </CardDescription>
+                </div>
+                <button onClick={() => setUploadModalPatient(null)} className="text-orange-100 hover:text-white">
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+            </CardHeader>
+
+            <CardContent className="p-5 space-y-4 text-xs">
+              <div className="border-2 border-dashed border-orange-200 bg-orange-50/40 p-4 rounded-xl flex flex-col items-center justify-center text-center gap-3">
+                {uploadPreview ? (
+                  <div className="w-full flex flex-col items-center gap-3">
+                    <div className="relative rounded-xl overflow-hidden border border-slate-200 bg-slate-950 p-1 shadow-md max-w-md w-full">
+                      <img
+                        src={uploadPreview}
+                        alt="High Resolution Fundus Preview"
+                        className="w-full h-64 object-contain rounded-lg cursor-pointer transition-transform hover:scale-[1.02]"
+                        onClick={() => setFullscreenImage(uploadPreview)}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setUploadFile(null);
+                          setUploadPreview(null);
+                        }}
+                        className="absolute top-2 right-2 p-1.5 bg-red-600/90 hover:bg-red-700 text-white rounded-full shadow-md"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-300">
+                        Full Resolution Automatically Fitted ✓
+                      </span>
+                      <Button
+                        type="button"
+                        onClick={() => document.getElementById("modal-file-input")?.click()}
+                        variant="outline"
+                        className="h-7 text-[10px] font-bold border-slate-300 bg-white"
+                      >
+                        Change File
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="h-12 w-12 rounded-full bg-orange-100 flex items-center justify-center text-[#FF6B00]">
+                      <Camera className="h-6 w-6" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-slate-800">Select or Capture High-Resolution Fundus Image</p>
+                      <p className="text-[10px] text-slate-500 mt-0.5">
+                        High-definition retinal images are automatically scaled to full resolution and fitted without distortion.
+                      </p>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2 justify-center pt-1">
+                      <Button
+                        type="button"
+                        onClick={() => document.getElementById("modal-camera-input")?.click()}
+                        className="bg-[#FF6B00] hover:bg-orange-600 text-white font-bold h-9 text-xs rounded-xl flex items-center gap-1.5 shadow-2xs"
+                      >
+                        <Camera className="h-4 w-4" /> Direct Camera Capture
+                      </Button>
+                      <Button
+                        type="button"
+                        onClick={() => document.getElementById("modal-file-input")?.click()}
+                        className="bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 font-bold h-9 text-xs rounded-xl flex items-center gap-1.5 shadow-2xs"
+                      >
+                        <Upload className="h-4 w-4" /> Choose from Gallery / Files
+                      </Button>
+                    </div>
+                  </>
+                )}
+
+                <input
+                  id="modal-camera-input"
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  className="hidden"
+                  onChange={handleFundusFileSelect}
+                />
+                <input
+                  id="modal-file-input"
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleFundusFileSelect}
+                />
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <Button
+                  onClick={() => setUploadModalPatient(null)}
+                  variant="outline"
+                  className="flex-1 text-xs h-9 rounded-xl font-semibold"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleSaveFundusUpload}
+                  disabled={isUploadingFundus || !uploadPreview}
+                  className="flex-1 bg-gradient-to-r from-orange-500 to-[#FF6B00] hover:from-[#FF6B00] hover:to-orange-600 text-white text-xs h-9 rounded-xl font-bold shadow-md"
+                >
+                  {isUploadingFundus ? "Saving Image..." : "Save High-Res Fundus Image"}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Base Hospital Modal */}
       {activeBasePatient && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fadeIn">
           <Card className="w-full max-w-lg bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden">
@@ -832,6 +1107,19 @@ export default function DrsmsPatients() {
               </div>
             </CardContent>
           </Card>
+        </div>
+      )}
+
+      {/* Fullscreen HD Fundus Viewer */}
+      {fullscreenImage && (
+        <div className="fixed inset-0 bg-black/95 z-50 flex items-center justify-center p-4">
+          <button 
+            onClick={() => setFullscreenImage(null)}
+            className="absolute top-4 right-4 text-white p-2.5 bg-slate-800/80 hover:bg-slate-700 rounded-full shadow-lg"
+          >
+            <X className="h-6 w-6" />
+          </button>
+          <img src={fullscreenImage} alt="Fullscreen Fundus HD" className="max-w-[95vw] max-h-[92vh] object-contain rounded-xl shadow-2xl" />
         </div>
       )}
     </div>
