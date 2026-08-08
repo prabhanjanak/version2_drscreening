@@ -1,6 +1,7 @@
 import app from "./app";
 import { logger } from "./lib/logger";
 import { ensureSuperAdmin } from "./lib/superadmin";
+import { migrateExistingPatientIds } from "./lib/migrate-patient-ids";
 import { type Server } from "http";
 
 // ── Environment validation ─────────────────────────────────────────────────────
@@ -46,6 +47,7 @@ let server: Server;
 server = app.listen(port, () => {
   logger.info({ port }, "Server listening");
   ensureSuperAdmin();
+  migrateExistingPatientIds();
 });
 
 server.on("error", (err) => {
