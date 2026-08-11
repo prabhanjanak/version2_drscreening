@@ -346,7 +346,7 @@ export default function DrsmsScreeningEntry() {
     }
   };
 
-  // Load places with offline fallback
+  // Load all places from registry with offline fallback
   useEffect(() => {
     const fetchPlaces = async () => {
       try {
@@ -356,8 +356,7 @@ export default function DrsmsScreeningEntry() {
         });
         if (res.ok) {
           const data = await res.json();
-          const activePlaces = data.filter((p: any) => p.status === "active");
-          setPlaces(activePlaces);
+          setPlaces(data);
           localStorage.setItem("cached_places", JSON.stringify(data));
         } else {
           throw new Error("Network response not ok");
@@ -367,14 +366,21 @@ export default function DrsmsScreeningEntry() {
         const cached = localStorage.getItem("cached_places");
         if (cached) {
           const data = JSON.parse(cached);
-          const activePlaces = data.filter((p: any) => p.status === "active");
-          setPlaces(activePlaces);
+          setPlaces(data);
         }
       } finally {
         setLoadingPlaces(false);
       }
     };
     fetchPlaces();
+
+    // Check URL search parameters for pre-selected camp (e.g. /patients/new?camp=SANK01)
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlCamp = urlParams.get("camp") || urlParams.get("place");
+    if (urlCamp) {
+      setActiveCampCode(urlCamp.toUpperCase());
+      setValue("screeningPlaceCode", urlCamp.toUpperCase());
+    }
 
     // Check draft
     offlineDB.getDraft().then(draft => {
@@ -770,8 +776,11 @@ export default function DrsmsScreeningEntry() {
   // Filter places based on search query
   const filteredPlaces = places.filter(
     (p) =>
+      !searchQuery ||
       p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.shortCode.toLowerCase().includes(searchQuery.toLowerCase())
+      p.shortCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (p.district && p.district.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (p.taluk && p.taluk.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   // ──── LOCK SCREEN IF NO ACTIVE CAMP SELECTED ────
@@ -786,7 +795,7 @@ export default function DrsmsScreeningEntry() {
               </div>
               <h2 className="text-base font-extrabold text-slate-800">Campsite Session Portal</h2>
               <p className="text-xs text-slate-500 max-w-sm mx-auto">
-                Select and open the active campsite before collecting screening records.
+                Select and open the active campsite ({places.length} Camps Available) before collecting screening records.
               </p>
             </div>
 
@@ -797,10 +806,10 @@ export default function DrsmsScreeningEntry() {
               </span>
               <input
                 type="text"
-                placeholder="Search active camps by name or code..."
+                placeholder="Search camps by name, code, taluk, or district..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-4 py-2.5 text-xs border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#FF6B00] bg-slate-50/50"
+                className="w-full pl-9 pr-4 py-2.5 text-xs border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#FF6B00] bg-slate-50/50 font-medium"
               />
             </div>
 
@@ -810,10 +819,10 @@ export default function DrsmsScreeningEntry() {
               </div>
             ) : filteredPlaces.length === 0 ? (
               <div className="py-12 text-center text-xs text-slate-400 font-semibold border border-dashed border-slate-200 rounded-xl bg-slate-50/50">
-                No matching active camps found. Contact Camp Coordinator.
+                No matching camps found. Try clearing search query or register a new campsite.
               </div>
             ) : (
-              <div className="max-h-64 overflow-y-auto space-y-2 pr-1.5 scrollbar-thin">
+              <div className="max-h-72 overflow-y-auto space-y-2 pr-1.5 scrollbar-thin">
                 {filteredPlaces.map((p) => (
                   <button
                     key={p.id}
@@ -827,10 +836,21 @@ export default function DrsmsScreeningEntry() {
                     className="w-full text-left p-3.5 bg-white border border-slate-200 hover:border-orange-500 rounded-xl flex items-center justify-between transition-all group hover:bg-orange-50/20"
                   >
                     <div>
-                      <p className="text-xs font-bold text-slate-800">{p.name}</p>
-                      <p className="text-[10px] text-slate-400 font-medium mt-0.5">Code: {p.shortCode} • Date: {p.campDate || (p.createdAt ? new Date(p.createdAt).toISOString().split("T")[0] : "Today")}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-xs font-bold text-slate-800">{p.name}</p>
+                        <span className={`text-[9px] font-extrabold px-1.5 py-0.2 rounded border ${
+                          p.status === "completed" 
+                            ? "bg-slate-100 text-slate-600 border-slate-200" 
+                            : "bg-emerald-50 text-emerald-700 border-emerald-200"
+                        }`}>
+                          {p.status === "completed" ? "Completed" : "Active / Scheduled"}
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-slate-500 font-medium mt-0.5">
+                        Code: <strong className="font-mono text-slate-700">{p.shortCode}</strong> • {p.taluk || p.district || "Karnataka"} • Date: <strong className="text-orange-600">{p.campDate || (p.createdAt ? new Date(p.createdAt).toISOString().split("T")[0] : "Today")}</strong>
+                      </p>
                     </div>
-                    <span className="text-[10px] font-bold text-[#FF6B00] bg-orange-50 border border-orange-200 px-2.5 py-1 rounded-lg group-hover:bg-[#FF6B00] group-hover:text-white transition-colors">
+                    <span className="text-[10px] font-bold text-[#FF6B00] bg-orange-50 border border-orange-200 px-2.5 py-1 rounded-lg group-hover:bg-[#FF6B00] group-hover:text-white transition-colors shrink-0">
                       Open Camp
                     </span>
                   </button>
@@ -865,13 +885,26 @@ export default function DrsmsScreeningEntry() {
 
         <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
           <Button
+            type="button"
+            onClick={() => {
+              setActiveCampCode(null);
+              localStorage.removeItem("activeCampCode");
+              setValue("screeningPlaceCode", "");
+            }}
+            variant="outline"
+            className="text-[10px] sm:text-xs h-8 font-bold px-3 rounded-lg border-slate-300 text-slate-700 hover:bg-slate-100 flex items-center gap-1 shadow-2xs"
+          >
+            <MapPin className="h-3.5 w-3.5 text-[#FF6B00]" /> Switch Camp
+          </Button>
+
+          <Button
             onClick={() => {
               fetchVcReferrals();
               setVcModalOpen(true);
             }}
             className="bg-orange-50 hover:bg-orange-100 text-[#FF6B00] border border-orange-200 text-[10px] sm:text-xs h-8 font-bold px-3 rounded-lg flex items-center gap-1.5 shadow-none"
           >
-            <User className="h-3.5 w-3.5" /> Referrals from Ophthalmic Officers / VCs / ASHA Workers
+            <User className="h-3.5 w-3.5" /> Referrals
           </Button>
 
           <Button

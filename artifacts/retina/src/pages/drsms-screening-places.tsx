@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
+import { Link } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { 
-  MapPin, Edit2, Trash2, RefreshCw, Plus, X, ShieldAlert, CheckCircle, Map, List, Globe, Navigation
+  MapPin, Edit2, Trash2, RefreshCw, Plus, X, ShieldAlert, CheckCircle, Map, List, Globe, Navigation, ArrowRight
 } from "lucide-react";
 
 interface ScreeningPlace {
@@ -855,7 +856,14 @@ export default function DrsmsScreeningPlaces() {
                       {place.status === "completed" ? "Verified & Completed" : "Ongoing / Scheduled"}
                     </span>
                     
-                    <div className="flex gap-1.5">
+                    <div className="flex items-center gap-1.5">
+                      <Link
+                        href={`/patients/new?camp=${place.shortCode}`}
+                        className="bg-orange-50 hover:bg-orange-100 text-[#FF6B00] border border-orange-200 text-[10px] h-7 px-2.5 rounded-md font-bold flex items-center gap-1 transition-colors"
+                      >
+                        Screening <ArrowRight className="h-3 w-3" />
+                      </Link>
+
                       {isCoordinator && place.status !== "completed" && (
                         <Button 
                           onClick={() => handleFinalize(place)}
