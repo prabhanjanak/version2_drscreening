@@ -427,31 +427,41 @@ router.put("/patients/:id", requireAuth(), async (req, res) => {
   }
 });
 
-// PATCH /api/patients/:id/base-hospital-visit - Record visit & outcome at Base Hospital
-router.patch("/patients/:id/base-hospital-visit", requireAuth(), async (req, res) => {
+// PATCH /api/patients/:id/base-visit or /api/patients/:id/base-hospital-visit - Record visit & outcome at Base Hospital
+router.patch(["/patients/:id/base-visit", "/patients/:id/base-hospital-visit"], requireAuth(), async (req, res) => {
   const id = parseInt(req.params.id as string, 10);
   if (isNaN(id)) {
     res.status(400).json({ error: "Invalid patient ID" });
     return;
   }
 
-  const { visitedBaseHospital, baseHospitalVisitDate, baseHospitalOutcome, baseHospitalOutcomeNotes } = req.body;
+  const { visitedBaseHospital, baseHospitalVisitDate, baseHospitalOutcome, baseHospitalOutcomeNotes, baseHospitalNotes, imagePath } = req.body;
 
   try {
     const today = new Date().toISOString().split("T")[0];
+    const notes = (baseHospitalNotes || baseHospitalOutcomeNotes || "").trim();
+
+    const updatePayload: Record<string, any> = {
+      visitedBaseHospital: visitedBaseHospital !== undefined ? !!visitedBaseHospital : true,
+      baseHospitalVisitDate: visitedBaseHospital === false ? null : (baseHospitalVisitDate || today),
+      baseHospitalOutcome: visitedBaseHospital === false ? null : (baseHospitalOutcome || "Evaluation Done"),
+      baseHospitalOutcomeNotes: notes || null,
+      baseHospitalRemarks: notes || null,
+      referralStatus: visitedBaseHospital ? "Visited" : "Pending",
+    };
+
+    if (imagePath) {
+      updatePayload.imagePath = imagePath;
+      updatePayload.fundusCaptured = true;
+    }
+
     const [updated] = await db
       .update(patientsTable)
-      .set({
-        visitedBaseHospital: visitedBaseHospital !== undefined ? !!visitedBaseHospital : true,
-        baseHospitalVisitDate: baseHospitalVisitDate || today,
-        baseHospitalOutcome: baseHospitalOutcome || "Evaluation Done",
-        baseHospitalOutcomeNotes: baseHospitalOutcomeNotes ? baseHospitalOutcomeNotes.trim() : null,
-        referralStatus: "Visited",
-      })
+      .set(updatePayload)
       .where(eq(patientsTable.id, id))
       .returning();
 
-    res.json({ message: "Base hospital visit outcome recorded successfully", patient: updated });
+    res.json(updated);
   } catch (err: any) {
     res.status(500).json({ error: "Failed to record base hospital visit: " + err.message });
   }

@@ -26,6 +26,7 @@ const ROLE_LABELS: Record<string, string> = {
   ophthalmic_officer: "Ophthalmic Officer",
   vision_center: "Vision Center (VC)",
   asha_worker: "ASHA Worker",
+  registration_desk: "Registration Desk (Base Hospital)",
 };
 
 export function AppLayout({ children }: LayoutProps) {
@@ -66,7 +67,7 @@ export function AppLayout({ children }: LayoutProps) {
   const getNavItems = () => {
     const type = user.userType as string;
 
-    // Special dedicated 2 tabs for Ophthalmic Officers
+    // Special dedicated 2 tabs for Ophthalmic Officers & ASHA Workers
     if (type === "ophthalmic_officer" || type === "asha_worker") {
       return [
         { label: "1. Refer a Patient", href: "/asha-referrals", icon: Heart },
@@ -75,8 +76,21 @@ export function AppLayout({ children }: LayoutProps) {
       ];
     }
 
+    // Special dedicated navigation for Registration Desk (Base Hospital)
+    if (type === "registration_desk") {
+      return [
+        { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+        { label: "RBH Tracking & Visits", href: "/rbh-tracking", icon: Building2 },
+        { label: "Patient Records (View)", href: "/patients", icon: FileText },
+        { label: "Camps / Places (View)", href: "/screening-places", icon: MapPin },
+        { label: "Reports", href: "/reports", icon: Activity },
+        { label: "Settings", href: "/settings", icon: Settings },
+      ];
+    }
+
     const items = [
       { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+      { label: "RBH Tracking & Visits", href: "/rbh-tracking", icon: Building2 },
     ];
 
     if (type === "super_admin" || type === "admin" || type === "admin_unit" || type === "unit_head" || type === "vision_center") {

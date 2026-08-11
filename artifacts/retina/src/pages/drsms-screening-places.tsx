@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { 
   MapPin, Edit2, Trash2, RefreshCw, Plus, X, ShieldAlert, CheckCircle, Map, List, Globe, Navigation, ArrowRight
 } from "lucide-react";
+import { ALL_KARNATAKA_DISTRICTS, getTaluksForDistrict } from "@/lib/karnataka-data";
 
 interface ScreeningPlace {
   id: number;
@@ -259,10 +260,14 @@ export default function DrsmsScreeningPlaces() {
   const [saving, setSaving] = useState(false);
   const [gpsLoading, setGpsLoading] = useState(false);
 
-  // Cascading lists helper
-  const stateOptions = Object.keys(LOCATION_DATA);
-  const districtOptions = LOCATION_DATA[stateStr] ? Object.keys(LOCATION_DATA[stateStr]) : [];
-  const talukOptions = LOCATION_DATA[stateStr]?.[district] ? Object.keys(LOCATION_DATA[stateStr][district]) : [];
+  // Cascading lists helper with complete 31 Karnataka Districts and Taluks
+  const stateOptions = ["Karnataka", "Tamil Nadu", "Andhra Pradesh", "Maharashtra", "Gujarat", "Punjab", "Rajasthan", "Madhya Pradesh", "Telangana", "Uttar Pradesh"];
+  const districtOptions = stateStr === "Karnataka"
+    ? ALL_KARNATAKA_DISTRICTS
+    : (LOCATION_DATA[stateStr] ? Object.keys(LOCATION_DATA[stateStr]) : ["Shimoga (Shivamogga)", "Bengaluru Urban"]);
+  const talukOptions = stateStr === "Karnataka"
+    ? getTaluksForDistrict(district)
+    : (LOCATION_DATA[stateStr]?.[district] ? Object.keys(LOCATION_DATA[stateStr][district]) : []);
   const pincodeOptions = LOCATION_DATA[stateStr]?.[district]?.[taluk] || [];
 
   // Update cascading values on parent selection changes
@@ -277,12 +282,6 @@ export default function DrsmsScreeningPlaces() {
       setTaluk(talukOptions[0]);
     }
   }, [district]);
-
-  useEffect(() => {
-    if (pincodeOptions.length > 0 && !pincodeOptions.includes(pincode)) {
-      setPincode(pincodeOptions[0]);
-    }
-  }, [taluk]);
 
   const fetchPlacesAndPatients = async () => {
     setLoading(true);
@@ -990,20 +989,26 @@ export default function DrsmsScreeningPlaces() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block font-semibold text-slate-600 mb-1">Taluk / Sub-District</label>
-                    <input
-                      type="text"
-                      list="taluk-suggestions"
-                      value={taluk}
-                      onChange={(e) => setTaluk(e.target.value)}
-                      placeholder="e.g. Shimoga Rural / Ayanur"
-                      className="w-full text-xs border border-slate-300 p-2.5 rounded-lg bg-white outline-none focus:ring-1 focus:ring-[#FF6B00]"
-                    />
-                    <datalist id="taluk-suggestions">
-                      {talukOptions.map(tk => (
-                        <option key={tk} value={tk} />
-                      ))}
-                    </datalist>
+                    <label className="block font-semibold text-slate-600 mb-1">Taluk / Sub-District *</label>
+                    {talukOptions.length > 0 ? (
+                      <select
+                        value={taluk}
+                        onChange={(e) => setTaluk(e.target.value)}
+                        className="w-full text-xs border border-slate-300 p-2.5 rounded-lg bg-white outline-none focus:ring-1 focus:ring-[#FF6B00] font-medium"
+                      >
+                        {talukOptions.map(tk => (
+                          <option key={tk} value={tk}>{tk}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input
+                        type="text"
+                        value={taluk}
+                        onChange={(e) => setTaluk(e.target.value)}
+                        placeholder="e.g. Shimoga / Anekal"
+                        className="w-full text-xs border border-slate-300 p-2.5 rounded-lg bg-white outline-none focus:ring-1 focus:ring-[#FF6B00]"
+                      />
+                    )}
                   </div>
 
                   <div>
