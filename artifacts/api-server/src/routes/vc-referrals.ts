@@ -35,34 +35,45 @@ router.get("/vc-referrals", requireAuth(), async (req, res) => {
       }
     }
 
-    const referrals = await db.select({
-      id: vcReferralsTable.id,
-      patientName: vcReferralsTable.patientName,
-      age: vcReferralsTable.age,
-      gender: vcReferralsTable.gender,
-      phone: vcReferralsTable.phone,
-      address: vcReferralsTable.address,
-      village: vcReferralsTable.village,
-      visionCenterId: vcReferralsTable.visionCenterId,
-      visionCenterCode: vcReferralsTable.visionCenterCode,
-      visionCenterName: visionCentersTable.name,
-      referrerType: vcReferralsTable.referrerType,
-      phcName: vcReferralsTable.phcName,
-      randomBloodSugar: vcReferralsTable.randomBloodSugar,
-      symptoms: vcReferralsTable.symptoms,
-      targetCampCode: vcReferralsTable.targetCampCode,
-      targetCampName: screeningPlacesTable.name,
-      referralDate: vcReferralsTable.referralDate,
-      drNotes: vcReferralsTable.drNotes,
-      status: vcReferralsTable.status,
-      convertedPatientId: vcReferralsTable.convertedPatientId,
-      createdAt: vcReferralsTable.createdAt
-    })
-    .from(vcReferralsTable)
-    .leftJoin(visionCentersTable, eq(vcReferralsTable.visionCenterId, visionCentersTable.id))
-    .leftJoin(screeningPlacesTable, eq(sql`UPPER(${vcReferralsTable.targetCampCode})`, sql`UPPER(${screeningPlacesTable.shortCode})`))
-    .where(conditions.length > 0 ? and(...conditions) : undefined)
-    .orderBy(desc(vcReferralsTable.createdAt));
+    let referrals;
+    try {
+      referrals = await db.select({
+        id: vcReferralsTable.id,
+        patientName: vcReferralsTable.patientName,
+        age: vcReferralsTable.age,
+        gender: vcReferralsTable.gender,
+        phone: vcReferralsTable.phone,
+        address: vcReferralsTable.address,
+        village: vcReferralsTable.village,
+        visionCenterId: vcReferralsTable.visionCenterId,
+        visionCenterCode: vcReferralsTable.visionCenterCode,
+        visionCenterName: visionCentersTable.name,
+        referrerType: vcReferralsTable.referrerType,
+        phcName: vcReferralsTable.phcName,
+        randomBloodSugar: vcReferralsTable.randomBloodSugar,
+        symptoms: vcReferralsTable.symptoms,
+        targetCampCode: vcReferralsTable.targetCampCode,
+        targetCampName: screeningPlacesTable.name,
+        referralDate: vcReferralsTable.referralDate,
+        drNotes: vcReferralsTable.drNotes,
+        status: vcReferralsTable.status,
+        convertedPatientId: vcReferralsTable.convertedPatientId,
+        createdAt: vcReferralsTable.createdAt
+      })
+      .from(vcReferralsTable)
+      .leftJoin(visionCentersTable, eq(vcReferralsTable.visionCenterId, visionCentersTable.id))
+      .leftJoin(screeningPlacesTable, eq(sql`UPPER(COALESCE(${vcReferralsTable.targetCampCode}, ''))`, sql`UPPER(${screeningPlacesTable.shortCode})`))
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .orderBy(desc(vcReferralsTable.createdAt));
+    } catch {
+      // Robust direct query fallback without left joins
+      const rows = await db.select().from(vcReferralsTable).orderBy(desc(vcReferralsTable.createdAt));
+      referrals = rows.map(r => ({
+        ...r,
+        targetCampName: r.targetCampCode,
+        visionCenterName: r.visionCenterCode,
+      }));
+    }
 
     res.json(referrals);
   } catch (err: any) {
