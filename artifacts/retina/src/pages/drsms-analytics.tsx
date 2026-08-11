@@ -86,16 +86,30 @@ export default function DrsmsAnalytics() {
         </Button>
       </div>
 
-      {/* Top 4 KPI Metrics */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Top 5 KPI Metrics */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         
+        {/* Eye Loss Prevented / Sight Saved Highlight Card */}
+        <Card className="rounded-2xl border border-orange-300 shadow-sm bg-gradient-to-br from-orange-500 to-[#FF6B00] text-white p-4 flex items-center justify-between col-span-1 sm:col-span-2 lg:col-span-1">
+          <div className="space-y-1">
+            <p className="text-[10px] font-black text-orange-100 uppercase tracking-wider">Total Eyes Saved</p>
+            <p className="text-2xl font-black text-white">{clinicalMetrics.totalEyesSaved || 0} <span className="text-xs font-bold text-orange-200">Eyes</span></p>
+            <p className="text-[10px] font-extrabold text-orange-100 flex items-center gap-1">
+              ✓ {clinicalMetrics.eyeLossPreventedCount || 0} Patients Protected
+            </p>
+          </div>
+          <div className="h-12 w-12 rounded-2xl bg-white/20 text-white flex items-center justify-center font-bold">
+            <Eye className="h-6 w-6" />
+          </div>
+        </Card>
+
         {/* Active Logged-in Sessions */}
         <Card className="rounded-2xl border border-slate-200 shadow-xs bg-white p-4 flex items-center justify-between">
           <div className="space-y-1">
-            <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Active Logged-In Users</p>
+            <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Active Users</p>
             <p className="text-2xl font-black text-slate-900">{activeSessions.activeUserCount}</p>
             <p className="text-[10px] font-bold text-emerald-600 flex items-center gap-1">
-              <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" /> Active in last 30 mins
+              <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" /> Active now
             </p>
           </div>
           <div className="h-12 w-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
@@ -106,10 +120,10 @@ export default function DrsmsAnalytics() {
         {/* Total Screened Patients */}
         <Card className="rounded-2xl border border-slate-200 shadow-xs bg-white p-4 flex items-center justify-between">
           <div className="space-y-1">
-            <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Total Patients Screened</p>
+            <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Screened Patients</p>
             <p className="text-2xl font-black text-slate-900">{clinicalMetrics.totalScreened}</p>
             <p className="text-[10px] font-bold text-[#FF6B00]">
-              {clinicalMetrics.positiveDRPercentage}% Positive DR Rate
+              {clinicalMetrics.positiveDRPercentage}% Positive DR
             </p>
           </div>
           <div className="h-12 w-12 rounded-2xl bg-orange-50 text-[#FF6B00] flex items-center justify-center font-bold">
@@ -123,7 +137,7 @@ export default function DrsmsAnalytics() {
             <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Referrals Converted</p>
             <p className="text-2xl font-black text-slate-900">{referralMetrics.completedReferrals} / {referralMetrics.totalReferrals}</p>
             <p className="text-[10px] font-bold text-blue-600">
-              {referralMetrics.conversionRate}% Camp Screening Rate
+              {referralMetrics.conversionRate}% Conversion
             </p>
           </div>
           <div className="h-12 w-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
@@ -134,10 +148,10 @@ export default function DrsmsAnalytics() {
         {/* Server System Memory */}
         <Card className="rounded-2xl border border-slate-200 shadow-xs bg-white p-4 flex items-center justify-between">
           <div className="space-y-1">
-            <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Node.js Memory (Heap)</p>
+            <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Node.js Heap</p>
             <p className="text-2xl font-black text-slate-900">{systemHealth.heapUsedMb} MB</p>
             <p className="text-[10px] font-bold text-purple-600">
-              Uptime: {Math.floor(systemHealth.uptimeSeconds / 60)} mins ({systemHealth.nodeVersion})
+              Uptime: {Math.floor(systemHealth.uptimeSeconds / 60)} mins
             </p>
           </div>
           <div className="h-12 w-12 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center font-bold">

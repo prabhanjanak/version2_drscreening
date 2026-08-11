@@ -124,6 +124,55 @@ router.get("/dashboard/drsms", requireAuth(["admin", "super_admin", "doctor", "f
       );
     const positiveDR = Number(positiveDRResult?.count || 0);
 
+    // Sight-Threatening DR Cases (Moderate NPDR, Severe NPDR, PDR, Macular Edema)
+    const [stdrResult] = await db
+      .select({ count: sql<number>`COUNT(*)` })
+      .from(patientsTable)
+      .where(
+        getWhereClause(
+          inArray(patientsTable.drStatus, [
+            "Moderate NPDR",
+            "Severe NPDR",
+            "PDR",
+            "Macular Edema",
+            "Refer"
+          ])
+        )
+      );
+    const sightThreateningDR = Number(stdrResult?.count || 0);
+
+    // Base Hospital Visited / Interventions Done
+    const [baseVisitsResult] = await db
+      .select({ count: sql<number>`COUNT(*)` })
+      .from(patientsTable)
+      .where(getWhereClause(eq(patientsTable.visitedBaseHospital, true)));
+    const baseVisitsCompleted = Number(baseVisitsResult?.count || 0);
+
+    // Cataract Patients Segregated & Saved from Blindness
+    const [cataractResult] = await db
+      .select({ count: sql<number>`COUNT(*)` })
+      .from(patientsTable)
+      .where(
+        getWhereClause(
+          and(
+            sql`${patientsTable.hasCataract} IS NOT NULL`,
+            not(eq(patientsTable.hasCataract, "None"))
+          )
+        )
+      );
+    const cataractIdentified = Number(cataractResult?.count || 0);
+
+    // Gift of Vision Free Sponsorship Beneficiaries
+    const [govResult] = await db
+      .select({ count: sql<number>`COUNT(*)` })
+      .from(patientsTable)
+      .where(getWhereClause(eq(patientsTable.referredToGiftOfVision, true)));
+    const giftOfVisionCount = Number(govResult?.count || 0);
+
+    // Overall Eye Loss / Blindness Prevented Metric
+    const eyeLossPreventedPatients = sightThreateningDR + baseVisitsCompleted + cataractIdentified;
+    const totalEyesSaved = eyeLossPreventedPatients * 2; // Total eyes protected
+
     // Referred count
     const [referredResult] = await db
       .select({ count: sql<number>`COUNT(*)` })
@@ -259,6 +308,12 @@ router.get("/dashboard/drsms", requireAuth(["admin", "super_admin", "doctor", "f
         todayScreening,
         monthScreening,
         positiveDR,
+        sightThreateningDR,
+        baseVisitsCompleted,
+        cataractIdentified,
+        giftOfVisionCount,
+        eyeLossPreventedPatients,
+        totalEyesSaved,
         referredCount,
         activeUsers,
         plannedCamps,

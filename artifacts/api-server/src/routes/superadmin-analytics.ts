@@ -120,7 +120,11 @@ router.get(
       // 4. CLINICAL & DR SCREENING ANALYTICS
       let drDistributionRaw: any[] = [];
       let drPositiveCount = 0;
+      let sightThreateningDRCount = 0;
       let baseHospitalReferredCount = 0;
+      let baseHospitalVisitedCount = 0;
+      let cataractIdentifiedCount = 0;
+      let giftOfVisionCount = 0;
       let imageQualityStats: any[] = [];
 
       try {
@@ -145,9 +149,44 @@ router.get(
         const [r] = await db
           .select({ count: sql`COUNT(*)` })
           .from(patientsTable)
+          .where(sql`${patientsTable.drStatus} IN ('Moderate NPDR', 'Severe NPDR', 'PDR', 'Macular Edema', 'Refer')`);
+        sightThreateningDRCount = Number(r?.count || 0);
+      } catch (e) {}
+
+      try {
+        const [r] = await db
+          .select({ count: sql`COUNT(*)` })
+          .from(patientsTable)
           .where(eq(patientsTable.referToBaseHospital, true));
         baseHospitalReferredCount = Number(r?.count || 0);
       } catch (e) {}
+
+      try {
+        const [r] = await db
+          .select({ count: sql`COUNT(*)` })
+          .from(patientsTable)
+          .where(eq(patientsTable.visitedBaseHospital, true));
+        baseHospitalVisitedCount = Number(r?.count || 0);
+      } catch (e) {}
+
+      try {
+        const [r] = await db
+          .select({ count: sql`COUNT(*)` })
+          .from(patientsTable)
+          .where(sql`${patientsTable.hasCataract} IS NOT NULL AND ${patientsTable.hasCataract} != 'None'`);
+        cataractIdentifiedCount = Number(r?.count || 0);
+      } catch (e) {}
+
+      try {
+        const [r] = await db
+          .select({ count: sql`COUNT(*)` })
+          .from(patientsTable)
+          .where(eq(patientsTable.referredToGiftOfVision, true));
+        giftOfVisionCount = Number(r?.count || 0);
+      } catch (e) {}
+
+      const eyeLossPreventedCount = sightThreateningDRCount + baseHospitalVisitedCount + cataractIdentifiedCount;
+      const totalEyesSaved = eyeLossPreventedCount * 2;
 
       try {
         imageQualityStats = await db
@@ -258,7 +297,13 @@ router.get(
           positiveDRPercentage: patientCount > 0 
             ? ((drPositiveCount / patientCount) * 100).toFixed(1) 
             : "0.0",
-          baseHospitalReferredCount: baseHospitalReferredCount,
+          sightThreateningDRCount,
+          baseHospitalReferredCount,
+          baseHospitalVisitedCount,
+          cataractIdentifiedCount,
+          giftOfVisionCount,
+          eyeLossPreventedCount,
+          totalEyesSaved,
           drDistribution: drDistributionRaw.map((d) => ({ status: d.status, count: Number(d.count || 0) })),
           imageQualityStats: imageQualityStats.map((q) => ({ quality: q.quality, count: Number(q.count || 0) })),
         },

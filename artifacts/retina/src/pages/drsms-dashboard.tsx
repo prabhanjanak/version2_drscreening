@@ -19,6 +19,12 @@ interface DashboardData {
     todayScreening: number;
     monthScreening: number;
     positiveDR: number;
+    sightThreateningDR?: number;
+    baseVisitsCompleted?: number;
+    cataractIdentified?: number;
+    giftOfVisionCount?: number;
+    eyeLossPreventedPatients?: number;
+    totalEyesSaved?: number;
     referredCount: number;
     activeUsers: number;
     plannedCamps: number;
@@ -394,6 +400,98 @@ export default function DrsmsDashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* ──── OVERALL EYE LOSS PREVENTED / SIGHT SAVED IMPACT SECTION ──── */}
+      <Card className="rounded-2xl border border-orange-200 bg-gradient-to-br from-orange-50/60 via-white to-amber-50/40 shadow-sm overflow-hidden">
+        <CardHeader className="py-3.5 px-5 border-b border-orange-100/80 bg-white/60">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <div className="h-8 w-8 rounded-xl bg-gradient-to-tr from-orange-500 to-[#FF6B00] text-white flex items-center justify-center shadow-xs">
+                <Eye className="h-4.5 w-4.5" />
+              </div>
+              <div>
+                <CardTitle className="text-sm font-black text-slate-900 flex items-center gap-2">
+                  Eye Loss Prevented (Sight Saved) Statistics Overall
+                  <span className="text-[10px] font-extrabold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full border border-emerald-300">
+                    Clinical Impact
+                  </span>
+                </CardTitle>
+                <CardDescription className="text-[11px] text-slate-500">
+                  Total eyes and patients protected from irreversible blindness through outreach DR screening, cataract segregation & tertiary hospital interventions.
+                </CardDescription>
+              </div>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="p-4 md:p-5">
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
+            {/* Total Eyes Saved */}
+            <div className="bg-white p-3.5 rounded-xl border border-orange-200/80 shadow-2xs space-y-1">
+              <p className="text-[10px] font-extrabold text-orange-950 uppercase tracking-wider flex items-center gap-1">
+                <Sparkles className="h-3.5 w-3.5 text-[#FF6B00]" /> Total Eyes Saved
+              </p>
+              <p className="text-2xl font-black text-[#FF6B00]">
+                {summary.totalEyesSaved || 0} <span className="text-xs font-bold text-slate-500">Eyes</span>
+              </p>
+              <p className="text-[9px] font-semibold text-slate-500">
+                {summary.eyeLossPreventedPatients || 0} Total Patients Protected
+              </p>
+            </div>
+
+            {/* Sight-Threatening DR Intercepted */}
+            <div className="bg-white p-3.5 rounded-xl border border-rose-200/80 shadow-2xs space-y-1">
+              <p className="text-[10px] font-extrabold text-rose-950 uppercase tracking-wider flex items-center gap-1">
+                <ShieldAlert className="h-3.5 w-3.5 text-rose-600" /> STDR Intercepted
+              </p>
+              <p className="text-2xl font-black text-rose-600">
+                {summary.sightThreateningDR || 0}
+              </p>
+              <p className="text-[9px] font-semibold text-slate-500">
+                Severe NPDR, PDR & DME Diagnosed Early
+              </p>
+            </div>
+
+            {/* Base Hospital Interventions */}
+            <div className="bg-white p-3.5 rounded-xl border border-indigo-200/80 shadow-2xs space-y-1">
+              <p className="text-[10px] font-extrabold text-indigo-950 uppercase tracking-wider flex items-center gap-1">
+                <Activity className="h-3.5 w-3.5 text-indigo-600" /> Base Interventions
+              </p>
+              <p className="text-2xl font-black text-indigo-600">
+                {summary.baseVisitsCompleted || 0}
+              </p>
+              <p className="text-[9px] font-semibold text-slate-500">
+                Laser PRP, Anti-VEGF & Vitrectomy Done
+              </p>
+            </div>
+
+            {/* Cataract Sight Restored */}
+            <div className="bg-white p-3.5 rounded-xl border border-amber-200/80 shadow-2xs space-y-1">
+              <p className="text-[10px] font-extrabold text-amber-950 uppercase tracking-wider flex items-center gap-1">
+                <Eye className="h-3.5 w-3.5 text-amber-600" /> Cataracts Segregated
+              </p>
+              <p className="text-2xl font-black text-amber-600">
+                {summary.cataractIdentified || 0}
+              </p>
+              <p className="text-[9px] font-semibold text-slate-500">
+                Immature/Mature Scheduled for Phaco
+              </p>
+            </div>
+
+            {/* Gift of Vision 100% Free Beneficiaries */}
+            <div className="bg-white p-3.5 rounded-xl border border-emerald-200/80 shadow-2xs space-y-1 col-span-2 sm:col-span-1">
+              <p className="text-[10px] font-extrabold text-emerald-950 uppercase tracking-wider flex items-center gap-1">
+                <Heart className="h-3.5 w-3.5 text-emerald-600" /> Gift of Vision
+              </p>
+              <p className="text-2xl font-black text-emerald-600">
+                {summary.giftOfVisionCount || 0}
+              </p>
+              <p className="text-[9px] font-semibold text-slate-500">
+                100% Free Sankara Sponsorships
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Role specific callout for field staff */}
       {((user?.userType as string) === "outreach") && (
