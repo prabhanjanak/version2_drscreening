@@ -102,6 +102,9 @@ class DatabaseHelper {
       'cataractPlanning TEXT',
       'fundusCaptured INTEGER DEFAULT 1',
       'fundusNotCapturedReason TEXT',
+      'referToBaseHospital INTEGER DEFAULT 0',
+      'baseHospitalRemarks TEXT',
+      'remarks TEXT',
       'referredToGiftOfVision INTEGER DEFAULT 0',
       'giftOfVisionNotes TEXT',
       'govtSchemes TEXT',
@@ -112,7 +115,6 @@ class DatabaseHelper {
     ];
 
     for (final col in columns) {
-      final colName = col.split(' ').first;
       try {
         await db.execute('ALTER TABLE offline_patients ADD COLUMN $col');
       } catch (_) {
@@ -142,7 +144,27 @@ class DatabaseHelper {
       final map = patient.toJson();
       map['isSynced'] = 0;
       map['createdAt'] = DateTime.now().toIso8601String();
-      return await db.insert('offline_patients', map);
+
+      try {
+        return await db.insert('offline_patients', map);
+      } catch (err) {
+        // Run migration to add missing columns dynamically
+        await _ensureColumnsExist(db);
+
+        // Fetch actual existing table columns
+        final List<Map<String, dynamic>> tableInfo = await db.rawQuery('PRAGMA table_info(offline_patients)');
+        final Set<String> existingColumns = tableInfo.map((c) => c['name'].toString()).toSet();
+
+        // Filter map to only existing columns
+        final filteredMap = <String, dynamic>{};
+        map.forEach((k, v) {
+          if (existingColumns.contains(k)) {
+            filteredMap[k] = v;
+          }
+        });
+
+        return await db.insert('offline_patients', filteredMap);
+      }
     }
   }
 
