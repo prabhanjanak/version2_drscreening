@@ -132,32 +132,40 @@ router.post("/vc-referrals", requireAuth(), async (req, res) => {
         status: "pending",
         createdBy: req.user?.id || null,
       }).returning();
-    } catch (dbErr: any) {
-      // Robust fallback without foreign keys if user/VC reference doesn't exist in DB
-      [created] = await db.insert(vcReferralsTable).values({
-        patientName: patientName.trim(),
-        age: parseInt(String(age), 10) || 45,
-        gender: gender || "Female",
-        phone: phone ? phone.trim() : "N/A",
-        address: (address || village || "").trim() || null,
-        village: (village || address || "").trim() || null,
-        visionCenterId: null,
-        visionCenterCode: effectiveVcCode,
-        referrerType: effectiveReferrerType,
-        phcName: phcName ? phcName.trim() : null,
-        randomBloodSugar: randomBloodSugar ? randomBloodSugar.trim() : null,
-        symptoms: symptoms ? symptoms.trim() : null,
-        targetCampCode: cleanCampCode,
-        referralDate: referralDate || today,
-        drNotes: drNotes ? drNotes.trim() : null,
-        status: "pending",
-        createdBy: null,
-      }).returning();
+    } catch (insertErr: any) {
+      console.warn("[VC-REFERRAL] Standard insert failed, trying bulletproof raw SQL fallback:", insertErr?.message || insertErr);
+      
+      const queryResult = await db.execute(sql`
+        INSERT INTO "vc_referrals" (
+          "patient_name", "age", "gender", "phone", "address", "village",
+          "vision_center_code", "referrer_type", "phc_name", "random_blood_sugar",
+          "symptoms", "target_camp_code", "referral_date", "dr_notes", "status"
+        ) VALUES (
+          ${patientName.trim()},
+          ${parseInt(String(age), 10) || 45},
+          ${gender || 'Female'},
+          ${phone ? phone.trim() : 'N/A'},
+          ${(address || village || '').trim() || null},
+          ${(village || address || '').trim() || null},
+          ${effectiveVcCode},
+          ${effectiveReferrerType},
+          ${phcName ? phcName.trim() : null},
+          ${randomBloodSugar ? randomBloodSugar.trim() : null},
+          ${symptoms ? symptoms.trim() : null},
+          ${cleanCampCode},
+          ${referralDate || today},
+          ${drNotes ? drNotes.trim() : null},
+          'pending'
+        ) RETURNING *;
+      `);
+      created = (queryResult as any).rows?.[0] || (queryResult as any)[0];
     }
 
     res.status(201).json(created);
   } catch (err: any) {
-    res.status(500).json({ error: "Failed to create VC/ASHA referral: " + err.message });
+    const errorDetails = err?.cause?.message || err?.detail || err?.message || String(err);
+    console.error("[VC-REFERRAL ERROR]", errorDetails);
+    res.status(500).json({ error: "Failed to create VC/ASHA referral: " + errorDetails });
   }
 });
 

@@ -239,6 +239,9 @@ ALTER TABLE IF EXISTS "vc_referrals" ALTER COLUMN "vision_center_code" DROP NOT 
 ALTER TABLE IF EXISTS "vc_referrals" ALTER COLUMN "referrer_type" DROP NOT NULL;
 ALTER TABLE IF EXISTS "vc_referrals" ALTER COLUMN "status" DROP NOT NULL;
 ALTER TABLE IF EXISTS "vc_referrals" ALTER COLUMN "phone" DROP NOT NULL;
+ALTER TABLE IF EXISTS "vc_referrals" ALTER COLUMN "created_by" DROP NOT NULL;
+ALTER TABLE IF EXISTS "vc_referrals" ALTER COLUMN "converted_patient_id" DROP NOT NULL;
+ALTER TABLE IF EXISTS "vc_referrals" ALTER COLUMN "vision_center_id" DROP NOT NULL;
 
 ALTER TABLE IF EXISTS "vc_referrals" ALTER COLUMN "referral_date" SET DEFAULT TO_CHAR(NOW(), 'YYYY-MM-DD');
 ALTER TABLE IF EXISTS "vc_referrals" ALTER COLUMN "camp_date" SET DEFAULT TO_CHAR(NOW(), 'YYYY-MM-DD');
@@ -246,10 +249,19 @@ ALTER TABLE IF EXISTS "vc_referrals" ALTER COLUMN "status" SET DEFAULT 'pending'
 ALTER TABLE IF EXISTS "vc_referrals" ALTER COLUMN "referrer_type" SET DEFAULT 'vision_center';
 ALTER TABLE IF EXISTS "vc_referrals" ALTER COLUMN "vision_center_code" SET DEFAULT 'OUTREACH_REFERRAL';
 
-ALTER TABLE IF EXISTS "vc_referrals" DROP CONSTRAINT IF EXISTS "vc_referrals_created_by_fkey";
-ALTER TABLE IF EXISTS "vc_referrals" DROP CONSTRAINT IF EXISTS "vc_referrals_created_by_system_users_id_fk";
-ALTER TABLE IF EXISTS "vc_referrals" DROP CONSTRAINT IF EXISTS "vc_referrals_vision_center_id_fkey";
-ALTER TABLE IF EXISTS "vc_referrals" DROP CONSTRAINT IF EXISTS "vc_referrals_vision_center_id_vision_centers_id_fk";
+-- Drop all FOREIGN KEY and CHECK constraints on vc_referrals dynamically
+DO $$ 
+DECLARE 
+    r RECORD;
+BEGIN
+    FOR r IN (
+        SELECT constraint_name 
+        FROM information_schema.table_constraints 
+        WHERE table_name = 'vc_referrals' AND constraint_type IN ('FOREIGN KEY', 'CHECK')
+    ) LOOP
+        EXECUTE 'ALTER TABLE vc_referrals DROP CONSTRAINT IF EXISTS ' || quote_ident(r.constraint_name);
+    END LOOP;
+END $$;
 
 -- 10. Performance Indexes
 CREATE INDEX IF NOT EXISTS "patients_screening_place_code_idx" ON "patients" ("screening_place_code");
