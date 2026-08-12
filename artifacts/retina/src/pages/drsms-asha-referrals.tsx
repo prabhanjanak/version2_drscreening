@@ -48,6 +48,13 @@ export default function DrsmsAshaReferrals() {
   const [randomBloodSugar, setRandomBloodSugar] = useState("");
   const [symptoms, setSymptoms] = useState("Blurred vision");
   const [targetCampCode, setTargetCampCode] = useState("");
+  const [referrerType, setReferrerType] = useState<string>(
+    (user as any)?.userType === "asha_worker" 
+      ? "asha_worker" 
+      : (user as any)?.userType === "vision_center" 
+        ? "vision_center" 
+        : "ophthalmic_officer"
+  );
   const [drNotes, setDrNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -109,8 +116,6 @@ export default function DrsmsAshaReferrals() {
     setSubmitting(true);
     try {
       const authToken = localStorage.getItem("vision2020_token");
-      const userRole = (user as any)?.userType || "ophthalmic_officer";
-      const referrerType = userRole === "asha_worker" ? "asha_worker" : userRole === "ophthalmic_officer" ? "ophthalmic_officer" : "vision_center";
 
       const res = await fetch("/api/vc-referrals", {
         method: "POST",
@@ -216,6 +221,35 @@ export default function DrsmsAshaReferrals() {
           </CardHeader>
           <CardContent className="p-6">
             <form onSubmit={handleSubmitReferral} className="space-y-4">
+              
+              {/* Referrer Role Selector */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Referrer Designation / Role *
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  {[
+                    { id: "ophthalmic_officer", label: "Ophthalmic Officer (Optometrist)", icon: "👁️" },
+                    { id: "asha_worker", label: "ASHA Worker / ANM Outreach", icon: "❤️" },
+                    { id: "vision_center", label: "Vision Center / PHC Staff", icon: "🏥" }
+                  ].map(r => (
+                    <button
+                      key={r.id}
+                      type="button"
+                      onClick={() => setReferrerType(r.id)}
+                      className={`p-2.5 rounded-xl border text-xs font-bold text-left transition-all flex items-center gap-2 ${
+                        referrerType === r.id
+                          ? "bg-orange-50 border-[#FF6B00] text-[#FF6B00] shadow-2xs"
+                          : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+                      }`}
+                    >
+                      <span>{r.icon}</span>
+                      <span className="text-[11px] leading-tight">{r.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               {/* Patient Name */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">

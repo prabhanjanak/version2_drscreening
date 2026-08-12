@@ -169,12 +169,13 @@ router.patch("/vc-referrals/:id/convert", requireAuth(), async (req, res) => {
       res.status(400).json({ error: "Invalid referral ID" });
       return;
     }
-    const { patientId } = req.body;
+    const { patientId, convertedPatientId } = req.body;
+    const targetId = patientId || convertedPatientId;
 
     const [updated] = await db.update(vcReferralsTable)
       .set({
         status: "completed",
-        convertedPatientId: patientId ? parseInt(String(patientId), 10) : null,
+        convertedPatientId: targetId ? parseInt(String(targetId), 10) : null,
       })
       .where(eq(vcReferralsTable.id, id))
       .returning();

@@ -206,11 +206,17 @@ export default function DrsmsScreeningEntry() {
         setVcReferrals(data);
       }
     } catch (err) {
-      console.error(err);
+      console.error("Failed to load pre-referrals:", err);
     } finally {
       setLoadingVcReferrals(false);
     }
   };
+
+  useEffect(() => {
+    if (activeCampCode) {
+      fetchVcReferrals();
+    }
+  }, [activeCampCode]);
 
   const handleApplyReferral = (refItem: any) => {
     setAppliedReferralId(refItem.id);
@@ -219,10 +225,30 @@ export default function DrsmsScreeningEntry() {
     setValue("gender", refItem.gender);
     setValue("phone", refItem.phone === "N/A" ? "" : refItem.phone);
     if (refItem.address || refItem.village) setValue("address", refItem.address || refItem.village);
-    if (refItem.drNotes) setValue("remarks", refItem.drNotes);
+    if (refItem.randomBloodSugar || refItem.bloodSugar) {
+      setValue("diabetesMeasureValue", refItem.randomBloodSugar || refItem.bloodSugar);
+      setValue("diabetesMeasureType", "GRBS (mg/dL)");
+    }
+    if (refItem.phcName) {
+      setValue("chcPhcCenterName", refItem.phcName);
+      setValue("grbsRecordedBy", "CHC / PHC Staff");
+    }
+    if (refItem.referrerType === "asha_worker") {
+      setValue("referralSource", "ASHA Worker / ANM Outreach");
+    } else if (refItem.referrerType === "ophthalmic_officer") {
+      setValue("referralSource", "Doctor / Hospital Referral");
+    } else {
+      setValue("referralSource", "Vision Center / PHC / CHC");
+    }
+    const combinedNotes = [
+      refItem.symptoms ? `Referred Symptoms: ${refItem.symptoms}` : "",
+      refItem.drNotes ? `Clinical Notes: ${refItem.drNotes}` : "",
+    ].filter(Boolean).join(" | ");
+    if (combinedNotes) setValue("remarks", combinedNotes);
+
     toast({
-      title: "Referral Loaded! 📋",
-      description: `Auto-filled details for ${refItem.patientName} referred by ${refItem.phcName || refItem.visionCenterName || refItem.visionCenterCode}.`
+      title: "Pre-Referral Loaded! 📋",
+      description: `Auto-filled details for ${refItem.patientName} referred by ${refItem.referrerType === 'asha_worker' ? (refItem.phcName || 'ASHA Worker') : refItem.referrerType === 'ophthalmic_officer' ? 'Ophthalmic Officer' : (refItem.visionCenterName || refItem.visionCenterCode)}.`
     });
     setVcModalOpen(false);
   };
@@ -248,7 +274,7 @@ export default function DrsmsScreeningEntry() {
     }
   };
 
-  const { register, handleSubmit, watch, setValue, reset, formState: { errors } } = useForm<FormValues>({
+  const { register, handleSubmit, watch, setValue, reset, resetField, formState: { errors } } = useForm<FormValues>({
     resolver: zodResolver(screeningFormSchema),
     defaultValues: {
       date: new Date().toISOString().split("T")[0],
@@ -954,6 +980,68 @@ export default function DrsmsScreeningEntry() {
           </CardHeader>
           <CardContent className="p-4 md:p-6 space-y-4 text-xs">
             
+            {/* Pre-Referred Patient Fast-Selector Banner */}
+            {appliedReferralId ? (
+              <div className="bg-emerald-50 border border-emerald-300 rounded-xl p-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-2xs">
+                <div className="flex items-center gap-2.5">
+                  <div className="h-7 w-7 rounded-lg bg-emerald-600 text-white flex items-center justify-center font-bold text-xs shrink-0">
+                    ✓
+                  </div>
+                  <div>
+                    <p className="text-xs font-extrabold text-emerald-900">
+                      Pre-Referral Auto-Filled: <span className="underline">{watch("patientName")}</span>
+                    </p>
+                    <p className="text-[10px] text-emerald-700 font-medium">
+                      Patient demographics & glucose level imported. Will auto-mark referral as screened on submission.
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setAppliedReferralId(null);
+                    resetField("patientName");
+                    resetField("phone");
+                    resetField("address");
+                    resetField("diabetesMeasureValue");
+                    resetField("remarks");
+                    toast({ title: "Pre-referral unlinked", description: "Form fields cleared." });
+                  }}
+                  className="text-[10px] h-7 border-emerald-300 text-emerald-800 hover:bg-emerald-100 font-bold rounded-lg shrink-0"
+                >
+                  <X className="h-3 w-3 mr-1" /> Unlink Referral
+                </Button>
+              </div>
+            ) : (
+              <div className="bg-gradient-to-r from-orange-50 via-amber-50 to-orange-50 border border-orange-200 rounded-xl p-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5">
+                <div className="flex items-center gap-2">
+                  <Heart className="h-4 w-4 text-[#FF6B00] shrink-0" />
+                  <div>
+                    <span className="text-[11px] font-bold text-slate-800">
+                      Pre-Referred Camp Patients:
+                    </span>{" "}
+                    <span className="text-[11px] font-extrabold text-[#FF6B00]">
+                      {vcReferrals.filter(r => r.status === "pending").length} Awaiting Screening
+                    </span>
+                    <p className="text-[9px] text-slate-500 font-medium">
+                      Referred by Ophthalmic Officers, Vision Centers & ASHA Workers for this camp ({activeCampCode}).
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  onClick={() => {
+                    fetchVcReferrals();
+                    setVcModalOpen(true);
+                  }}
+                  className="bg-[#FF6B00] hover:bg-orange-600 text-white font-bold text-[10px] h-7 px-3 rounded-lg shadow-2xs shrink-0 flex items-center gap-1"
+                >
+                  <User className="h-3 w-3" /> Select Pre-Referred Patient ({vcReferrals.filter(r => r.status === "pending").length})
+                </Button>
+              </div>
+            )}
+
             {/* Patient Name */}
             <div>
               <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">Patient Full Name *</label>
