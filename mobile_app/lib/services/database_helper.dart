@@ -31,14 +31,18 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 1,
+      version: 2,
       onCreate: _createDB,
+      onUpgrade: _onUpgrade,
+      onOpen: (db) async {
+        await _ensureColumnsExist(db);
+      },
     );
   }
 
   Future _createDB(Database db, int version) async {
     await db.execute('''
-      CREATE TABLE offline_patients (
+      CREATE TABLE IF NOT EXISTS offline_patients (
         local_id INTEGER PRIMARY KEY AUTOINCREMENT,
         uniqueId TEXT NOT NULL,
         date TEXT NOT NULL,
@@ -49,18 +53,72 @@ class DatabaseHelper {
         gender TEXT NOT NULL,
         address TEXT,
         phone TEXT NOT NULL,
+        alternatePhone TEXT,
+        referralSource TEXT DEFAULT 'ASHA Worker / ANM Outreach',
         diabetesDuration TEXT NOT NULL,
+        diabetesMeasureType TEXT DEFAULT 'GRBS (mg/dL)',
+        diabetesMeasureValue TEXT,
+        grbsRecordedBy TEXT DEFAULT 'CHC / PHC Staff',
+        chcPhcCenterName TEXT,
         bloodPressure TEXT,
         drStatus TEXT NOT NULL,
+        hasCataract TEXT DEFAULT 'None',
+        cataractPlanning TEXT,
+        fundusCaptured INTEGER DEFAULT 1,
+        fundusNotCapturedReason TEXT,
         advice TEXT NOT NULL,
         imagePath TEXT NOT NULL,
         imageQuality TEXT NOT NULL,
         referralStatus TEXT NOT NULL,
-        referToBaseHospital INTEGER NOT NULL,
+        referToBaseHospital INTEGER NOT NULL DEFAULT 0,
+        baseHospitalRemarks TEXT,
+        remarks TEXT,
+        referredToGiftOfVision INTEGER DEFAULT 0,
+        giftOfVisionNotes TEXT,
+        govtSchemes TEXT,
+        visitedBaseHospital INTEGER DEFAULT 0,
+        baseHospitalVisitDate TEXT,
+        baseHospitalOutcome TEXT,
+        baseHospitalOutcomeNotes TEXT,
         isSynced INTEGER NOT NULL DEFAULT 0,
         createdAt TEXT NOT NULL
       )
     ''');
+  }
+
+  Future _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    await _ensureColumnsExist(db);
+  }
+
+  Future<void> _ensureColumnsExist(Database db) async {
+    final columns = [
+      'alternatePhone TEXT',
+      "referralSource TEXT DEFAULT 'ASHA Worker / ANM Outreach'",
+      "diabetesMeasureType TEXT DEFAULT 'GRBS (mg/dL)'",
+      'diabetesMeasureValue TEXT',
+      "grbsRecordedBy TEXT DEFAULT 'CHC / PHC Staff'",
+      'chcPhcCenterName TEXT',
+      "hasCataract TEXT DEFAULT 'None'",
+      'cataractPlanning TEXT',
+      'fundusCaptured INTEGER DEFAULT 1',
+      'fundusNotCapturedReason TEXT',
+      'referredToGiftOfVision INTEGER DEFAULT 0',
+      'giftOfVisionNotes TEXT',
+      'govtSchemes TEXT',
+      'visitedBaseHospital INTEGER DEFAULT 0',
+      'baseHospitalVisitDate TEXT',
+      'baseHospitalOutcome TEXT',
+      'baseHospitalOutcomeNotes TEXT',
+    ];
+
+    for (final col in columns) {
+      final colName = col.split(' ').first;
+      try {
+        await db.execute('ALTER TABLE offline_patients ADD COLUMN $col');
+      } catch (_) {
+        // Column already exists, safe to ignore
+      }
+    }
   }
 
   // ──── PATIENT SCREENING OFFLINE QUEUE ────
