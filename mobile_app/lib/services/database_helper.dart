@@ -114,6 +114,29 @@ class DatabaseHelper {
     }
   }
 
+  // Get Today's Patient Count By Camp
+  Future<int> getTodayPatientCountByCamp(String date, String campCode) async {
+    if (kIsWeb) {
+      final prefs = await SharedPreferences.getInstance();
+      final List<String> list = prefs.getStringList('web_offline_patients') ?? [];
+      return list.where((item) {
+        final map = jsonDecode(item);
+        return map['date'] == date && map['screeningPlaceCode'] == campCode;
+      }).length;
+    } else {
+      final db = await database;
+      if (db == null) return 0;
+      final result = await db.rawQuery(
+        'SELECT COUNT(*) as count FROM offline_patients WHERE date = ? AND screeningPlaceCode = ?',
+        [date, campCode],
+      );
+      if (result.isNotEmpty && result.first['count'] != null) {
+        return int.tryParse(result.first['count'].toString()) ?? 0;
+      }
+      return 0;
+    }
+  }
+
   // Delete Patient After Successful Sync
   Future<void> deletePatient(int localId) async {
     if (kIsWeb) {

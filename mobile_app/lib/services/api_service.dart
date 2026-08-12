@@ -188,35 +188,31 @@ class ApiService {
     return await DatabaseHelper.instance.getCachedVisionCenters();
   }
 
-  // 5. Fetch VC Patient Referrals for active camp
-  static Future<List<Map<String, dynamic>>> fetchVcReferrals(String campCode) async {
-    try {
-      final baseUrl = await getBaseUrl();
-      final response = await http.get(
-        Uri.parse('$baseUrl/vc-referrals?targetCampCode=$campCode'),
-        headers: await _getHeaders(),
-      ).timeout(const Duration(seconds: 4));
-
-      if (response.statusCode == 200) {
-        final List data = jsonDecode(response.body);
-        return List<Map<String, dynamic>>.from(data);
-      }
-    } catch (e) {
-      print('Offline: VC referrals fetch failed');
-    }
-    return [];
-  }
-
   // 6. Upload Patient Screening Record
-  static Future<bool> createPatientRecord(PatientModel patient) async {
+  static Future<Map<String, dynamic>> submitPatientScreening(PatientModel patient) async {
     final baseUrl = await getBaseUrl();
     final response = await http.post(
       Uri.parse('$baseUrl/patients'),
       headers: await _getHeaders(),
       body: jsonEncode(patient.toJson()),
-    ).timeout(const Duration(seconds: 8));
+    ).timeout(const Duration(seconds: 10));
 
-    return response.statusCode == 201 || response.statusCode == 200;
+    if (response.statusCode == 201 || response.statusCode == 200) {
+      final json = jsonDecode(response.body);
+      return json is Map<String, dynamic> ? json : {'id': json};
+    } else {
+      final err = jsonDecode(response.body);
+      throw Exception(err['error'] ?? 'Failed to save patient record');
+    }
+  }
+
+  static Future<bool> createPatientRecord(PatientModel patient) async {
+    try {
+      final res = await submitPatientScreening(patient);
+      return res['id'] != null || res['patient'] != null;
+    } catch (_) {
+      return false;
+    }
   }
 
   // ──── SCREENING PLACES / CAMPS CRUD ────
@@ -386,4 +382,72 @@ class ApiService {
       throw Exception(err['error'] ?? 'Failed to delete Vision Center');
     }
   }
+
+  // ──── VC & ASHA REFERRALS ────
+
+  static Future<List<Map<String, dynamic>>> fetchVcReferrals({String? targetCampCode, String? status}) async {
+    final baseUrl = await getBaseUrl();
+    String query = '';
+    List<String> params = [];
+    if (targetCampCode != null && targetCampCode.isNotEmpty) {
+      params.add('targetCampCode=${Uri.encodeComponent(targetCampCode)}');
+    }
+    if (status != null && status.isNotEmpty) {
+      params.add('status=${Uri.encodeComponent(status)}');
+    }
+    if (params.isNotEmpty) {
+      query = '?${params.join('&')}';
+    }
+
+    final response = await http.get(
+      Uri.parse('$baseUrl/vc-referrals$query'),
+      headers: await _getHeaders(),
+    );
+
+    if (response.statusCode == 200) {
+      final List data = jsonDecode(response.body);
+      return data.cast<Map<String, dynamic>>();
+    } else {
+      throw Exception('Failed to fetch referrals');
+    }
+  }
+
+  static Future<Map<String, dynamic>> createVcReferral(Map<String, dynamic> data) async {
+    final baseUrl = await getBaseUrl();
+    final response = await http.post(
+      Uri.parse('$baseUrl/vc-referrals'),
+      headers: await _getHeaders(),
+      body: jsonEncode(data),
+    );
+
+    if (response.statusCode == 201 || response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      final err = jsonDecode(response.body);
+      throw Exception(err['error'] ?? 'Failed to submit referral');
+    }
+  }
+
+  static Future<bool> convertVcReferral(int id, {int? patientId}) async {
+    final baseUrl = await getBaseUrl();
+    final response = await http.patch(
+      Uri.parse('$baseUrl/vc-referrals/$id/convert'),
+      headers: await _getHeaders(),
+      body: jsonEncode({'patientId': patientId, 'convertedPatientId': patientId}),
+    );
+
+    return response.statusCode == 200;
+  }
+
+  static Future<bool> updateVcReferralStatus(int id, String status) async {
+    final baseUrl = await getBaseUrl();
+    final response = await http.patch(
+      Uri.parse('$baseUrl/vc-referrals/$id/status'),
+      headers: await _getHeaders(),
+      body: jsonEncode({'status': status}),
+    );
+
+    return response.statusCode == 200;
+  }
 }
+

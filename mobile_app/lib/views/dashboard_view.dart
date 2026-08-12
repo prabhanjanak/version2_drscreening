@@ -11,6 +11,7 @@ import 'vision_centers_view.dart';
 import 'facility_schedule_view.dart';
 import 'camps_management_view.dart';
 import 'users_management_view.dart';
+import 'asha_referrals_view.dart';
 
 class DashboardView extends StatefulWidget {
   final UserModel user;
@@ -265,6 +266,18 @@ class _DashboardViewState extends State<DashboardView> {
                 mainAxisSpacing: 12,
                 childAspectRatio: 1.3,
                 children: [
+                  _buildNavCard(
+                    context,
+                    title: "Field & ASHA Referrals",
+                    subtitle: "Pre-Referrals & Outreach",
+                    icon: Icons.volunteer_activism_outlined,
+                    color: const Color(0xFFEA580C),
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => AshaReferralsView(user: widget.user)),
+                      );
+                    },
+                  ),
                   _buildNavCard(
                     context,
                     title: "Screening Camps",

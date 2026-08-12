@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:io';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
@@ -27,23 +26,42 @@ class _ScreeningEntryViewState extends State<ScreeningEntryView> {
   ScreeningPlaceModel? _selectedCamp;
   bool _loadingCamps = true;
 
-  // Form Fields
+  // Pre-Referrals for Active Camp
+  List<Map<String, dynamic>> _campReferrals = [];
+  int? _appliedReferralId;
+  String? _appliedReferralPatientName;
+
+  // Form Fields - Station 1: Demographics & Source
   final _nameController = TextEditingController();
   final _ageController = TextEditingController(text: "45");
   final _phoneController = TextEditingController();
+  final _alternatePhoneController = TextEditingController();
   final _addressController = TextEditingController();
-  final _systolicBpController = TextEditingController(text: "");
-  final _diastolicBpController = TextEditingController(text: "");
-  final _otherAdviceController = TextEditingController();
-  final _baseHospitalRemarksController = TextEditingController();
-  final _remarksController = TextEditingController();
-
   String _selectedGender = "Male";
+  String _selectedReferralSource = "ASHA Worker / ANM Outreach";
+  bool _referredToGiftOfVision = false;
+  String? _selectedGovtScheme;
+
+  // Station 2: Diabetes & Vitals
   String _selectedDuration = "Newly Diagnosed";
+  String _selectedMeasureType = "GRBS (mg/dL)";
+  final _glucoseValueController = TextEditingController();
+  String _selectedRecordedBy = "CHC / PHC Staff";
+  final _chcPhcCenterController = TextEditingController();
+  final _systolicBpController = TextEditingController();
+  final _diastolicBpController = TextEditingController();
+
+  // Station 3: Eye Assessment & Fundus
+  bool _fundusCaptured = true;
+  String _fundusNotCapturedReason = "Pupil not dilated";
+  String _selectedCataract = "None";
+  String? _selectedCataractPlanning;
   String _selectedDrStatus = "No DR";
   String _selectedAdvice = "Annual Review";
   final String _imageQuality = "Good";
   bool _referToBaseHospital = false;
+  final _baseHospitalRemarksController = TextEditingController();
+  final _remarksController = TextEditingController();
 
   File? _imageFile;
   String? _base64Image;
@@ -55,6 +73,22 @@ class _ScreeningEntryViewState extends State<ScreeningEntryView> {
     _fetchCamps();
   }
 
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _ageController.dispose();
+    _phoneController.dispose();
+    _alternatePhoneController.dispose();
+    _addressController.dispose();
+    _glucoseValueController.dispose();
+    _chcPhcCenterController.dispose();
+    _systolicBpController.dispose();
+    _diastolicBpController.dispose();
+    _baseHospitalRemarksController.dispose();
+    _remarksController.dispose();
+    super.dispose();
+  }
+
   Future<void> _fetchCamps() async {
     try {
       final camps = await ApiService.fetchScreeningPlaces();
@@ -64,6 +98,7 @@ class _ScreeningEntryViewState extends State<ScreeningEntryView> {
           if (_camps.isNotEmpty) {
             final active = _camps.where((c) => c.status == 'active').toList();
             _selectedCamp = active.isNotEmpty ? active.first : _camps.first;
+            _fetchCampReferrals();
           }
           _loadingCamps = false;
         });
@@ -76,11 +111,222 @@ class _ScreeningEntryViewState extends State<ScreeningEntryView> {
           if (cached.isNotEmpty) {
             final active = cached.where((c) => c.status == 'active').toList();
             _selectedCamp = active.isNotEmpty ? active.first : cached.first;
+            _fetchCampReferrals();
           }
           _loadingCamps = false;
         });
       }
     }
+  }
+
+  Future<void> _fetchCampReferrals() async {
+    if (_selectedCamp == null) return;
+    try {
+      final refs = await ApiService.fetchVcReferrals(
+        targetCampCode: _selectedCamp!.shortCode,
+        status: "pending",
+      );
+      if (mounted) {
+        setState(() {
+          _campReferrals = refs;
+        });
+      }
+    } catch (e) {
+      debugPrint("Error loading pre-referrals: $e");
+    }
+  }
+
+  void _applyReferral(Map<String, dynamic> ref) {
+    setState(() {
+      _appliedReferralId = ref['id'];
+      _appliedReferralPatientName = ref['patientName'];
+
+      _nameController.text = ref['patientName'] ?? '';
+      _ageController.text = (ref['age'] ?? '45').toString();
+      _selectedGender = ref['gender'] ?? 'Male';
+      _phoneController.text = (ref['phone'] == 'N/A' ? '' : ref['phone']) ?? '';
+      _addressController.text = (ref['address'] ?? ref['village'] ?? '').toString();
+
+      if (ref['randomBloodSugar'] != null && ref['randomBloodSugar'].toString().isNotEmpty) {
+        _glucoseValueController.text = ref['randomBloodSugar'].toString();
+        _selectedMeasureType = "GRBS (mg/dL)";
+      }
+
+      if (ref['phcName'] != null && ref['phcName'].toString().isNotEmpty) {
+        _chcPhcCenterController.text = ref['phcName'].toString();
+        _selectedRecordedBy = "CHC / PHC Staff";
+      }
+
+      final referrerType = ref['referrerType'] ?? '';
+      if (referrerType == 'asha_worker') {
+        _selectedReferralSource = "ASHA Worker / ANM Outreach";
+      } else if (referrerType == 'ophthalmic_officer') {
+        _selectedReferralSource = "Doctor / Hospital Referral";
+      } else {
+        _selectedReferralSource = "Vision Center / PHC / CHC";
+      }
+
+      final notes = [
+        if (ref['symptoms'] != null && ref['symptoms'].toString().isNotEmpty) "Symptoms: ${ref['symptoms']}",
+        if (ref['drNotes'] != null && ref['drNotes'].toString().isNotEmpty) "Notes: ${ref['drNotes']}",
+      ].join(" | ");
+
+      if (notes.isNotEmpty) {
+        _remarksController.text = notes;
+      }
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text("Auto-filled from pre-referral: ${ref['patientName']} ✓"),
+        backgroundColor: AppConstants.successGreen,
+      ),
+    );
+  }
+
+  void _unlinkReferral() {
+    setState(() {
+      _appliedReferralId = null;
+      _appliedReferralPatientName = null;
+      _nameController.clear();
+      _phoneController.clear();
+      _addressController.clear();
+      _glucoseValueController.clear();
+      _remarksController.clear();
+    });
+  }
+
+  void _openReferralsSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.all(16),
+          height: MediaQuery.of(context).size.height * 0.7,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        "Pre-Referred Camp Patients",
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                      ),
+                      Text(
+                        "Camp: ${_selectedCamp?.name} (${_selectedCamp?.shortCode})",
+                        style: const TextStyle(fontSize: 11, color: AppConstants.textMuted),
+                      ),
+                    ],
+                  ),
+                  IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
+                ],
+              ),
+              const Divider(),
+              Expanded(
+                child: _campReferrals.isEmpty
+                    ? const Center(
+                        child: Text(
+                          "No pending referrals found for this camp.",
+                          style: TextStyle(color: AppConstants.textMuted, fontSize: 12),
+                        ),
+                      )
+                    : ListView.builder(
+                        itemCount: _campReferrals.length,
+                        itemBuilder: (context, index) {
+                          final item = _campReferrals[index];
+                          final isAsha = item['referrerType'] == 'asha_worker';
+                          final isOphthalmic = item['referrerType'] == 'ophthalmic_officer';
+
+                          return Card(
+                            margin: const EdgeInsets.only(bottom: 8),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            child: Padding(
+                              padding: const EdgeInsets.all(12),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            Text(
+                                              item['patientName'] ?? 'Unnamed',
+                                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                            ),
+                                            const SizedBox(width: 6),
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                              decoration: BoxDecoration(
+                                                color: isOphthalmic
+                                                    ? const Color(0xFFFEF3C7)
+                                                    : isAsha
+                                                        ? const Color(0xFFFFE4E6)
+                                                        : const Color(0xFFE0E7FF),
+                                                borderRadius: BorderRadius.circular(4),
+                                              ),
+                                              child: Text(
+                                                isOphthalmic ? "Ophthalmic" : isAsha ? "ASHA" : "Vision Center",
+                                                style: TextStyle(
+                                                  fontSize: 9,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: isOphthalmic
+                                                      ? const Color(0xFF92400E)
+                                                      : isAsha
+                                                          ? const Color(0xFF9F1239)
+                                                          : const Color(0xFF3730A3),
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          "${item['age']} yrs • ${item['gender']} • 📞 ${item['phone']}",
+                                          style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                                        ),
+                                        if (item['randomBloodSugar'] != null)
+                                          Text(
+                                            "RBS: ${item['randomBloodSugar']} mg/dL",
+                                            style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF4338CA)),
+                                          ),
+                                      ],
+                                    ),
+                                  ),
+                                  ElevatedButton(
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: AppConstants.primaryOrange,
+                                      foregroundColor: Colors.white,
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                      minimumSize: const Size(60, 32),
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                    ),
+                                    onPressed: () {
+                                      Navigator.pop(context);
+                                      _applyReferral(item);
+                                    },
+                                    child: const Text("Auto-Fill", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   void _openCampSelectorSheet() {
@@ -119,12 +365,19 @@ class _ScreeningEntryViewState extends State<ScreeningEntryView> {
                         side: BorderSide(color: isSelected ? AppConstants.primaryOrange : AppConstants.borderLight),
                       ),
                       child: ListTile(
-                        title: Text("${camp.name} (${camp.shortCode})", style: const TextStyle(fontWeight: FontWeight.bold)),
-                        subtitle: Text("Taluk: ${camp.taluk ?? 'Shimoga Rural'} • Pincode: ${camp.pincode ?? '577211'}${camp.campDate != null ? ' • 📅 ${camp.campDate}' : ''}"),
+                        leading: CircleAvatar(
+                          backgroundColor: isSelected ? AppConstants.primaryOrange : AppConstants.primaryOrangeLight,
+                          child: Text(camp.shortCode, style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: isSelected ? Colors.white : AppConstants.primaryOrange)),
+                        ),
+                        title: Text(camp.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                        subtitle: Text("${camp.taluk}, ${camp.district} • ${camp.campDate}"),
                         trailing: isSelected ? const Icon(Icons.check_circle, color: AppConstants.primaryOrange) : null,
                         onTap: () {
-                          setState(() => _selectedCamp = camp);
+                          setState(() {
+                            _selectedCamp = camp;
+                          });
                           Navigator.pop(context);
+                          _fetchCampReferrals();
                         },
                       ),
                     );
@@ -139,184 +392,125 @@ class _ScreeningEntryViewState extends State<ScreeningEntryView> {
   }
 
   Future<void> _pickImage(ImageSource source) async {
-    try {
-      final picker = ImagePicker();
-      final pickedFile = await picker.pickImage(source: source, imageQuality: 70);
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(source: source, imageQuality: 85);
 
-      if (pickedFile != null) {
-        final bytes = await pickedFile.readAsBytes();
-        setState(() {
-          if (!kIsWeb) _imageFile = File(pickedFile.path);
-          _base64Image = 'data:image/jpeg;base64,${base64Encode(bytes)}';
-        });
-      }
-    } catch (e) {
-      print('Image pick error: $e');
+    if (pickedFile != null) {
+      final bytes = await pickedFile.readAsBytes();
+      setState(() {
+        _imageFile = File(pickedFile.path);
+        _base64Image = "data:image/jpeg;base64,${base64Encode(bytes)}";
+      });
     }
   }
 
-  // VC Referral Picker Modal
-  Future<void> _openVcReferralsModal() async {
-    if (_selectedCamp == null) return;
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) {
-        return Container(
-          padding: const EdgeInsets.all(16),
-          height: MediaQuery.of(context).size.height * 0.6,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    "VC Referrals for ${_selectedCamp!.shortCode}",
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                ],
-              ),
-              const Divider(),
-              Expanded(
-                child: FutureBuilder<List<Map<String, dynamic>>>(
-                  future: ApiService.fetchVcReferrals(_selectedCamp!.shortCode),
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Center(child: CircularProgressIndicator());
-                    }
-                    if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                      return const Center(child: Text("No pending VC referrals found for this camp."));
-                    }
-
-                    final referrals = snapshot.data!;
-                    return ListView.builder(
-                      itemCount: referrals.length,
-                      itemBuilder: (context, index) {
-                        final item = referrals[index];
-                        return Card(
-                          margin: const EdgeInsets.only(bottom: 8),
-                          child: ListTile(
-                            title: Text(item['patientName'] ?? '', style: const TextStyle(fontWeight: FontWeight.bold)),
-                            subtitle: Text("${item['age']} yrs • ${item['gender']} • 📞 ${item['phone']}"),
-                            trailing: ElevatedButton(
-                              style: ElevatedButton.styleFrom(backgroundColor: AppConstants.primaryOrange),
-                              onPressed: () {
-                                setState(() {
-                                  _nameController.text = item['patientName'] ?? '';
-                                  _ageController.text = (item['age'] ?? 45).toString();
-                                  _selectedGender = item['gender'] ?? 'Male';
-                                  _phoneController.text = item['phone'] ?? '';
-                                  _addressController.text = item['address'] ?? '';
-                                });
-                                Navigator.pop(context);
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text("Auto-filled details for ${item['patientName']}")),
-                                );
-                              },
-                              child: const Text("Fill Form", style: TextStyle(fontSize: 11, color: Colors.white)),
-                            ),
-                          ),
-                        );
-                      },
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Future<void> _saveScreeningRecord() async {
+  Future<void> _handleSaveScreening() async {
     if (!_formKey.currentState!.validate()) return;
     if (_selectedCamp == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select an active camp')),
+        const SnackBar(content: Text('Please select an active screening camp'), backgroundColor: AppConstants.dangerRed),
       );
       return;
     }
 
-    final campDateStr = _selectedCamp!.campDate ?? (_selectedCamp!.createdAt != null ? DateFormat('yyyy-MM-dd').format(DateTime.parse(_selectedCamp!.createdAt!)) : DateFormat('yyyy-MM-dd').format(DateTime.now()));
-    final dateParts = campDateStr.split('-');
-    final dd = dateParts.length == 3 ? dateParts[2].padLeft(2, '0') : '01';
-    final mm = dateParts.length == 3 ? dateParts[1].padLeft(2, '0') : '01';
-    final yyyy = dateParts.length == 3 ? dateParts[0] : '2026';
-    final dateFormatted = "$dd$mm$yyyy";
-    final dateStr = campDateStr;
-    final now = DateTime.now();
-    final serialNo = (now.millisecondsSinceEpoch % 9999) + 1;
-    final serialPadded = serialNo.toString().padLeft(4, '0');
-    final campCode = _selectedCamp!.shortCode.toUpperCase().trim();
-    final uniqueId = "SEH/$campCode/$dateFormatted/$serialPadded";
-
-    final bpStr = (_systolicBpController.text.trim().isNotEmpty || _diastolicBpController.text.trim().isNotEmpty)
-        ? "${_systolicBpController.text.trim()}/${_diastolicBpController.text.trim()}"
-        : null;
-
-    final adviceStr = (_selectedAdvice == "Others" && _otherAdviceController.text.trim().isNotEmpty)
-        ? "Others: ${_otherAdviceController.text.trim()}"
-        : _selectedAdvice;
-
-    final patient = PatientModel(
-      uniqueId: uniqueId,
-      date: dateStr,
-      screeningPlaceCode: _selectedCamp!.shortCode,
-      serialNumber: serialNo,
-      name: _nameController.text.trim(),
-      age: int.parse(_ageController.text.trim()),
-      gender: _selectedGender,
-      address: _addressController.text.trim(),
-      phone: _phoneController.text.trim(),
-      diabetesDuration: _selectedDuration,
-      bloodPressure: bpStr,
-      drStatus: _selectedDrStatus,
-      advice: adviceStr,
-      imagePath: _base64Image ?? "placeholder_fundus.jpg",
-      imageQuality: _imageQuality,
-      referralStatus: _selectedDrStatus != "No DR" ? "Referred" : "Follow-up",
-      referToBaseHospital: _referToBaseHospital,
-      baseHospitalRemarks: _referToBaseHospital ? _baseHospitalRemarksController.text.trim() : null,
-      remarks: _remarksController.text.trim().isNotEmpty ? _remarksController.text.trim() : null,
-    );
+    setState(() => _isSaving = true);
 
     try {
-      // Try posting online directly
-      final success = await ApiService.createPatientRecord(patient);
-      if (success) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Patient Screening Saved Online Successfully!'),
-              backgroundColor: AppConstants.successGreen,
-            ),
-          );
-          Navigator.pop(context);
-        }
-      } else {
-        throw Exception('Server rejected entry');
-      }
-    } catch (e) {
-      // Save locally to Database Helper (universal SQLite / local queue)
+      final now = DateTime.now();
+      final dateStr = DateFormat('yyyy-MM-dd').format(now);
+      final count = await DatabaseHelper.instance.getTodayPatientCountByCamp(dateStr, _selectedCamp!.shortCode);
+      final serial = count + 1;
+      final uniqueId = "${_selectedCamp!.shortCode}-$serial";
+
+      final bp = (_systolicBpController.text.isNotEmpty && _diastolicBpController.text.isNotEmpty)
+          ? "${_systolicBpController.text.trim()}/${_diastolicBpController.text.trim()}"
+          : null;
+
+      final patient = PatientModel(
+        uniqueId: uniqueId,
+        date: dateStr,
+        screeningPlaceCode: _selectedCamp!.shortCode,
+        serialNumber: serial,
+        name: _nameController.text.trim(),
+        age: int.parse(_ageController.text.trim()),
+        gender: _selectedGender,
+        address: _addressController.text.trim().isEmpty ? null : _addressController.text.trim(),
+        phone: _phoneController.text.trim().isEmpty ? 'N/A' : _phoneController.text.trim(),
+        alternatePhone: _alternatePhoneController.text.trim().isEmpty ? null : _alternatePhoneController.text.trim(),
+        referralSource: _selectedReferralSource,
+        diabetesDuration: _selectedDuration,
+        diabetesMeasureType: _selectedMeasureType,
+        diabetesMeasureValue: _glucoseValueController.text.trim().isEmpty ? null : _glucoseValueController.text.trim(),
+        grbsRecordedBy: _selectedRecordedBy,
+        chcPhcCenterName: _chcPhcCenterController.text.trim().isEmpty ? null : _chcPhcCenterController.text.trim(),
+        bloodPressure: bp,
+        drStatus: _selectedDrStatus,
+        hasCataract: _selectedCataract,
+        cataractPlanning: _selectedCataractPlanning,
+        fundusCaptured: _fundusCaptured,
+        fundusNotCapturedReason: _fundusCaptured ? null : _fundusNotCapturedReason,
+        advice: _selectedAdvice,
+        imagePath: _base64Image ?? '',
+        imageQuality: _imageQuality,
+        referralStatus: "Referred",
+        referToBaseHospital: _referToBaseHospital,
+        baseHospitalRemarks: _baseHospitalRemarksController.text.trim().isEmpty ? null : _baseHospitalRemarksController.text.trim(),
+        remarks: _remarksController.text.trim().isEmpty ? null : _remarksController.text.trim(),
+        referredToGiftOfVision: _referredToGiftOfVision,
+        govtSchemes: _selectedGovtScheme,
+        isSynced: false,
+      );
+
+      // Save locally to SQLite first
       await DatabaseHelper.instance.insertPatient(patient);
+
+      // Attempt live sync
+      try {
+        final serverRes = await ApiService.submitPatientScreening(patient);
+        if (serverRes['id'] != null) {
+          // If pre-referral was applied, mark referral as completed
+          if (_appliedReferralId != null) {
+            await ApiService.convertVcReferral(_appliedReferralId!, patientId: serverRes['id']);
+          }
+        }
+      } catch (liveErr) {
+        debugPrint("Saved locally offline, will sync later: $liveErr");
+      }
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Saved Offline to Local Database! Will auto-sync when online.'),
-            backgroundColor: AppConstants.warningAmber,
+          SnackBar(
+            content: Text("Screening Saved for ${_nameController.text.trim()} (ID: $uniqueId) ✓"),
+            backgroundColor: AppConstants.successGreen,
           ),
         );
-        Navigator.pop(context);
+
+        // Reset form
+        _nameController.clear();
+        _ageController.text = "45";
+        _phoneController.clear();
+        _alternatePhoneController.clear();
+        _addressController.clear();
+        _glucoseValueController.clear();
+        _systolicBpController.clear();
+        _diastolicBpController.clear();
+        _remarksController.clear();
+        _baseHospitalRemarksController.clear();
+        setState(() {
+          _appliedReferralId = null;
+          _appliedReferralPatientName = null;
+          _imageFile = null;
+          _base64Image = null;
+          _referToBaseHospital = false;
+        });
+
+        _fetchCampReferrals();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error saving: $e'), backgroundColor: AppConstants.dangerRed),
+        );
       }
     } finally {
       if (mounted) setState(() => _isSaving = false);
@@ -326,314 +520,66 @@ class _ScreeningEntryViewState extends State<ScreeningEntryView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppConstants.backgroundLight,
+      backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
-        backgroundColor: AppConstants.navyDark,
-        title: const Text("New Patient Screening", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.person_add_alt_1, color: AppConstants.primaryOrange),
-            onPressed: _openVcReferralsModal,
-            tooltip: "Referrals from VCs",
-          ),
-        ],
+        title: const Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text("DR Screening Entry", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            Text("Clinical Stations & Remidio Integration", style: TextStyle(fontSize: 10, color: Colors.white70)),
+          ],
+        ),
+        backgroundColor: AppConstants.primaryOrange,
+        foregroundColor: Colors.white,
+        elevation: 0,
       ),
       body: _loadingCamps
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(child: CircularProgressIndicator(color: AppConstants.primaryOrange))
           : SingleChildScrollView(
               padding: const EdgeInsets.all(16),
               child: Form(
                 key: _formKey,
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // Active Camp Selector Card (Touchable)
-                    InkWell(
-                      onTap: _openCampSelectorSheet,
-                      borderRadius: BorderRadius.circular(14),
-                      child: Container(
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: AppConstants.primaryOrange, width: 1.5),
-                          boxShadow: [
-                            BoxShadow(color: AppConstants.primaryOrange.withValues(alpha: 0.1), blurRadius: 6),
-                          ],
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.location_on, color: AppConstants.primaryOrange, size: 28),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text("ACTIVE CAMP SESSION (TAP TO CHANGE)", style: TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: AppConstants.primaryOrange, letterSpacing: 0.5)),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    _selectedCamp != null ? "${_selectedCamp!.name} (${_selectedCamp!.shortCode})" : "Select Camp Session",
-                                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: AppConstants.navyDark),
-                                  ),
-                                  if (_selectedCamp != null)
-                                    Text(
-                                      "Taluk: ${_selectedCamp!.taluk ?? 'Shimoga Rural'} • Pin: ${_selectedCamp!.pincode ?? '577211'}${_selectedCamp!.campDate != null ? ' • Date: ${_selectedCamp!.campDate}' : ''}",
-                                      style: const TextStyle(fontSize: 11, color: AppConstants.textMuted),
-                                    ),
-                                ],
-                              ),
-                            ),
-                            const Icon(Icons.arrow_drop_down, color: AppConstants.navyDark, size: 28),
-                          ],
-                        ),
-                      ),
-                    ),
+                    // Active Camp Bar
+                    _buildCampHeaderCard(),
+                    const SizedBox(height: 14),
 
-                    const SizedBox(height: 16),
+                    // STATION 1: Demographics & Registration
+                    _buildStation1Card(),
+                    const SizedBox(height: 14),
 
-                    // Section 1: Demographics
-                    _buildSectionHeader("SECTION 1: DEMOGRAPHICS"),
+                    // STATION 2: Diabetes & Vitals
+                    _buildStation2Card(),
+                    const SizedBox(height: 14),
 
-                    TextFormField(
-                      controller: _nameController,
-                      keyboardType: TextInputType.name,
-                      textCapitalization: TextCapitalization.words,
-                      textInputAction: TextInputAction.next,
-                      decoration: _buildInputDecoration("Patient Full Name *", Icons.person),
-                      validator: (val) => val == null || val.isEmpty ? "Required" : null,
-                    ),
-
-                    const SizedBox(height: 12),
-
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextFormField(
-                            controller: _ageController,
-                            keyboardType: TextInputType.number,
-                            textInputAction: TextInputAction.next,
-                            decoration: _buildInputDecoration("Age *", Icons.cake),
-                            validator: (val) => val == null || val.isEmpty ? "Required" : null,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: TextFormField(
-                            controller: _phoneController,
-                            keyboardType: TextInputType.phone,
-                            textInputAction: TextInputAction.next,
-                            maxLength: 10,
-                            decoration: _buildInputDecoration("Phone Number *", Icons.phone).copyWith(counterText: ""),
-                            validator: (val) => val == null || val.length != 10 ? "10 Digits" : null,
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    const SizedBox(height: 12),
-
-                    TextFormField(
-                      controller: _addressController,
-                      keyboardType: TextInputType.streetAddress,
-                      textCapitalization: TextCapitalization.words,
-                      textInputAction: TextInputAction.next,
-                      decoration: _buildInputDecoration("Address / Village *", Icons.location_on),
-                      validator: (val) => val == null || val.isEmpty ? "Required" : null,
-                    ),
-
-                    const SizedBox(height: 12),
-
-                    const Text("Gender *", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppConstants.navyDark)),
-                    const SizedBox(height: 6),
-                    _buildSegmentedGrid(
-                      options: AppConstants.genderOptions,
-                      selected: _selectedGender,
-                      onSelect: (val) => setState(() => _selectedGender = val),
-                    ),
-
+                    // STATION 3: Eye Assessment & Fundus
+                    _buildStation3Card(),
                     const SizedBox(height: 20),
-
-                    // Section 2: Clinical Vitals & Diabetes
-                    _buildSectionHeader("SECTION 2: VITALS & DIABETES"),
-
-                    const Text("Diabetes Duration *", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppConstants.navyDark)),
-                    const SizedBox(height: 6),
-                    _buildSegmentedGrid(
-                      options: AppConstants.diabetesDurationOptions,
-                      selected: _selectedDuration,
-                      onSelect: (val) => setState(() => _selectedDuration = val),
-                    ),
-
-                    const SizedBox(height: 12),
-
-                    const Text("Blood Pressure (SYS / DIA) *", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppConstants.navyDark)),
-                    const SizedBox(height: 6),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextFormField(
-                            controller: _systolicBpController,
-                            keyboardType: TextInputType.number,
-                            textInputAction: TextInputAction.next,
-                            decoration: _buildInputDecoration("Systolic (120)", Icons.favorite),
-                          ),
-                        ),
-                        const Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 8),
-                          child: Text("/", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                        ),
-                        Expanded(
-                          child: TextFormField(
-                            controller: _diastolicBpController,
-                            keyboardType: TextInputType.number,
-                            textInputAction: TextInputAction.done,
-                            decoration: _buildInputDecoration("Diastolic (80)", Icons.favorite_border),
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    const SizedBox(height: 20),
-
-                    // Section 3: Fundus Photography & Camera
-                    _buildSectionHeader("SECTION 3: FUNDUS PHOTOGRAPHY"),
-
-                    Container(
-                      height: 160,
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: AppConstants.borderLight),
-                      ),
-                      child: _imageFile != null
-                          ? ClipRRect(
-                              borderRadius: BorderRadius.circular(12),
-                              child: Image.file(_imageFile!, fit: BoxFit.cover),
-                            )
-                          : Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                const Icon(Icons.camera_alt_outlined, size: 40, color: AppConstants.textMuted),
-                                const SizedBox(height: 8),
-                                Wrap(
-                                  alignment: WrapAlignment.center,
-                                  spacing: 8,
-                                  runSpacing: 8,
-                                  children: [
-                                    ElevatedButton.icon(
-                                      onPressed: () => _pickImage(ImageSource.camera),
-                                      icon: const Icon(Icons.camera, size: 16),
-                                      label: const Text("Camera", style: TextStyle(fontSize: 11)),
-                                      style: ElevatedButton.styleFrom(backgroundColor: AppConstants.primaryOrange),
-                                    ),
-                                    ElevatedButton.icon(
-                                      onPressed: () async {
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          const SnackBar(content: Text('Connecting to Remidio FOP Camera (REM-FOP)...')),
-                                        );
-                                        setState(() {
-                                          _base64Image = "placeholder_fundus.jpg";
-                                        });
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          const SnackBar(
-                                            content: Text('Synced fundus image from Remidio Camera! 📸'),
-                                            backgroundColor: Colors.indigo,
-                                          ),
-                                        );
-                                      },
-                                      icon: const Icon(Icons.sync, size: 16),
-                                      label: const Text("Remidio Sync", style: TextStyle(fontSize: 11)),
-                                      style: ElevatedButton.styleFrom(backgroundColor: Colors.indigo),
-                                    ),
-                                    OutlinedButton.icon(
-                                      onPressed: () => _pickImage(ImageSource.gallery),
-                                      icon: const Icon(Icons.photo_library, size: 16),
-                                      label: const Text("Gallery", style: TextStyle(fontSize: 11)),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                    ),
-
-                    const SizedBox(height: 20),
-
-                    // Section 4: DR Diagnosis & Referral
-                    _buildSectionHeader("SECTION 4: DR DIAGNOSIS"),
-
-                    const Text("DR Status Severity *", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppConstants.navyDark)),
-                    const SizedBox(height: 6),
-                    _buildSegmentedGrid(
-                      options: AppConstants.drStatusOptions,
-                      selected: _selectedDrStatus,
-                      onSelect: (val) => setState(() => _selectedDrStatus = val),
-                      activeColor: _selectedDrStatus != "No DR" ? AppConstants.dangerRed : AppConstants.primaryOrange,
-                    ),
-
-                    const SizedBox(height: 12),
-
-                    const Text("Advice & Action Plan *", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppConstants.navyDark)),
-                    const SizedBox(height: 6),
-                    _buildSegmentedGrid(
-                      options: AppConstants.adviceOptions,
-                      selected: _selectedAdvice,
-                      onSelect: (val) => setState(() => _selectedAdvice = val),
-                    ),
-
-                    if (_selectedAdvice == "Others") ...[
-                      const SizedBox(height: 10),
-                      TextFormField(
-                        controller: _otherAdviceController,
-                        decoration: _buildInputDecoration("Specify Custom Advice *", Icons.edit_note),
-                      ),
-                    ],
-
-                    const SizedBox(height: 12),
-
-                    SwitchListTile(
-                      title: const Text("Refer to Base Hospital", style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
-                      subtitle: const Text("Flags patient for transport shuttle to Sankara Base Hospital"),
-                      value: _referToBaseHospital,
-                      activeThumbColor: AppConstants.primaryOrange,
-                      onChanged: (val) => setState(() => _referToBaseHospital = val),
-                    ),
-
-                    if (_referToBaseHospital) ...[
-                      const SizedBox(height: 8),
-                      TextFormField(
-                        controller: _baseHospitalRemarksController,
-                        maxLines: 2,
-                        decoration: _buildInputDecoration("Base Hospital Referral Remarks / Notes", Icons.warning_amber),
-                      ),
-                    ],
-
-                    const SizedBox(height: 16),
-
-                    TextFormField(
-                      controller: _remarksController,
-                      maxLines: 2,
-                      decoration: _buildInputDecoration("General Screening Remarks / Clinical Notes", Icons.notes),
-                    ),
-
-                    const SizedBox(height: 24),
 
                     // Submit Button
                     ElevatedButton(
-                      onPressed: _isSaving ? null : _saveScreeningRecord,
+                      onPressed: _isSaving ? null : _handleSaveScreening,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppConstants.primaryOrange,
                         foregroundColor: Colors.white,
-                        minimumSize: const Size(double.infinity, 54),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                        elevation: 3,
+                        minimumSize: const Size(double.infinity, 50),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        elevation: 2,
                       ),
                       child: _isSaving
                           ? const CircularProgressIndicator(color: Colors.white)
-                          : const Text("SAVE PATIENT SCREENING", style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+                          : const Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.check_circle_outline, size: 20),
+                                SizedBox(width: 8),
+                                Text("COMPLETE & SAVE SCREENING", style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                              ],
+                            ),
                     ),
-
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 30),
                   ],
                 ),
               ),
@@ -641,60 +587,566 @@ class _ScreeningEntryViewState extends State<ScreeningEntryView> {
     );
   }
 
-  Widget _buildSectionHeader(String title) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Text(
-        title,
-        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: AppConstants.primaryOrange, letterSpacing: 1),
+  Widget _buildCampHeaderCard() {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppConstants.primaryOrange.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: AppConstants.primaryOrangeLight,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Icon(Icons.campaign_outlined, color: AppConstants.primaryOrange, size: 20),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text("ACTIVE DR SCREENING CAMP", style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: AppConstants.primaryOrange)),
+                Text(
+                  _selectedCamp != null ? "${_selectedCamp!.name} (${_selectedCamp!.shortCode})" : "No Camp Selected",
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFF0F172A)),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+          TextButton.icon(
+            onPressed: _openCampSelectorSheet,
+            icon: const Icon(Icons.sync_alt, size: 14, color: AppConstants.primaryOrange),
+            label: const Text("Switch", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppConstants.primaryOrange)),
+          ),
+        ],
       ),
     );
   }
 
-  InputDecoration _buildInputDecoration(String label, IconData icon) {
-    return InputDecoration(
-      labelText: label,
-      prefixIcon: Icon(icon, color: AppConstants.primaryOrange, size: 20),
-      fillColor: Colors.white,
-      filled: true,
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+  Widget _buildStation1Card() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Row(
+                children: [
+                  CircleAvatar(radius: 10, backgroundColor: AppConstants.primaryOrange, child: Text("1", style: TextStyle(fontSize: 10, color: Colors.white, fontWeight: FontWeight.bold))),
+                  SizedBox(width: 8),
+                  Text("Station 1: Patient Demographics", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Color(0xFF0F172A))),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          // Pre-Referrals Quick Banner
+          if (_appliedReferralId != null) ...[
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: const Color(0xFFD1FAE5),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFF6EE7B7)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.check_circle, color: Color(0xFF065F46), size: 18),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      "Pre-Referral Auto-Filled: $_appliedReferralPatientName",
+                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF065F46)),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: _unlinkReferral,
+                    child: const Text("Unlink", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF991B1B))),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 10),
+          ] else if (_campReferrals.isNotEmpty) ...[
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFF7ED),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFFFDBA74)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.volunteer_activism_outlined, color: AppConstants.primaryOrange, size: 18),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      "${_campReferrals.length} Patient(s) Pre-Referred for this Camp",
+                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF9A3412)),
+                    ),
+                  ),
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppConstants.primaryOrange,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      minimumSize: const Size(60, 28),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                    ),
+                    onPressed: _openReferralsSheet,
+                    child: const Text("Select ➔", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 10),
+          ],
+
+          // Patient Full Name
+          TextFormField(
+            controller: _nameController,
+            decoration: InputDecoration(
+              labelText: "Patient Full Name *",
+              hintText: "Enter full name",
+              prefixIcon: const Icon(Icons.person_outline, color: AppConstants.primaryOrange),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            validator: (v) => v == null || v.trim().isEmpty ? "Patient name is required" : null,
+          ),
+          const SizedBox(height: 12),
+
+          // Age & Gender
+          Row(
+            children: [
+              Expanded(
+                child: TextFormField(
+                  controller: _ageController,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    labelText: "Age (Years) *",
+                    prefixIcon: const Icon(Icons.cake_outlined, color: AppConstants.primaryOrange),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  validator: (v) => v == null || v.trim().isEmpty ? "Required" : null,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: DropdownButtonFormField<String>(
+                  value: _selectedGender,
+                  decoration: InputDecoration(
+                    labelText: "Gender *",
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  items: ["Male", "Female", "Other"].map((g) => DropdownMenuItem(value: g, child: Text(g))).toList(),
+                  onChanged: (v) => setState(() => _selectedGender = v ?? "Male"),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          // Mobile & Alternate Phone
+          Row(
+            children: [
+              Expanded(
+                child: TextFormField(
+                  controller: _phoneController,
+                  keyboardType: TextInputType.phone,
+                  decoration: InputDecoration(
+                    labelText: "Mobile Phone *",
+                    hintText: "10-digit number",
+                    prefixIcon: const Icon(Icons.phone_outlined, color: AppConstants.primaryOrange),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  validator: (v) => v == null || v.trim().isEmpty ? "Required" : null,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: TextFormField(
+                  controller: _alternatePhoneController,
+                  keyboardType: TextInputType.phone,
+                  decoration: InputDecoration(
+                    labelText: "Alternate Phone",
+                    hintText: "Family / Relative",
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          // Address / Village
+          TextFormField(
+            controller: _addressController,
+            decoration: InputDecoration(
+              labelText: "Village / Town / Address *",
+              hintText: "e.g. Ripponpete Village, Hosanagara",
+              prefixIcon: const Icon(Icons.location_on_outlined, color: AppConstants.primaryOrange),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            validator: (v) => v == null || v.trim().isEmpty ? "Address is required" : null,
+          ),
+          const SizedBox(height: 12),
+
+          // Referral Source
+          DropdownButtonFormField<String>(
+            value: _selectedReferralSource,
+            decoration: InputDecoration(
+              labelText: "Patient Referral / Awareness Source *",
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            items: [
+              "ASHA Worker / ANM Outreach",
+              "Vision Center / PHC / CHC",
+              "Doctor / Hospital Referral",
+              "Tandora / Local Announcement",
+              "Pamphlet / Poster / Banner",
+              "Word of Mouth / Relative",
+              "Self / Walk-in",
+            ].map((s) => DropdownMenuItem(value: s, child: Text(s, style: const TextStyle(fontSize: 12)))).toList(),
+            onChanged: (v) => setState(() => _selectedReferralSource = v ?? "ASHA Worker / ANM Outreach"),
+          ),
+          const SizedBox(height: 10),
+
+          // Gift of Vision Toggle
+          SwitchListTile(
+            title: const Text("Referred to Gift of Vision (100% Free Sankara Sponsorship)", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+            value: _referredToGiftOfVision,
+            activeColor: AppConstants.primaryOrange,
+            onChanged: (v) => setState(() => _referredToGiftOfVision = v),
+            contentPadding: EdgeInsets.zero,
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _buildSegmentedGrid({
-    required List<String> options,
-    required String selected,
-    required Function(String) onSelect,
-    Color activeColor = AppConstants.primaryOrange,
-  }) {
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: options.map((opt) {
-        final isSelected = opt == selected;
-        return InkWell(
-          onTap: () => onSelect(opt),
-          borderRadius: BorderRadius.circular(8),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            decoration: BoxDecoration(
-              color: isSelected ? activeColor : Colors.white,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: isSelected ? activeColor : AppConstants.borderLight),
-              boxShadow: isSelected ? [BoxShadow(color: activeColor.withValues(alpha: 0.3), blurRadius: 4)] : [],
+  Widget _buildStation2Card() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              CircleAvatar(radius: 10, backgroundColor: AppConstants.primaryOrange, child: Text("2", style: TextStyle(fontSize: 10, color: Colors.white, fontWeight: FontWeight.bold))),
+              SizedBox(width: 8),
+              Text("Station 2: Diabetes & Vitals Assessment", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Color(0xFF0F172A))),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          // Duration of Diabetes
+          DropdownButtonFormField<String>(
+            value: _selectedDuration,
+            decoration: InputDecoration(
+              labelText: "Duration of Diabetes *",
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
             ),
-            child: Text(
-              opt,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                color: isSelected ? Colors.white : AppConstants.textDark,
+            items: AppConstants.diabetesDurationOptions.map((d) => DropdownMenuItem(value: d, child: Text(d))).toList(),
+            onChanged: (v) => setState(() => _selectedDuration = v ?? "Newly Diagnosed"),
+          ),
+          const SizedBox(height: 12),
+
+          // Blood Sugar Measure Type & Value
+          Row(
+            children: [
+              Expanded(
+                flex: 3,
+                child: DropdownButtonFormField<String>(
+                  value: _selectedMeasureType,
+                  decoration: InputDecoration(
+                    labelText: "Sugar Test Type",
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  items: [
+                    "GRBS (mg/dL)",
+                    "RBS (mg/dL)",
+                    "FBS (mg/dL)",
+                    "PPBS (mg/dL)",
+                    "HbA1c (%)",
+                  ].map((m) => DropdownMenuItem(value: m, child: Text(m, style: const TextStyle(fontSize: 11)))).toList(),
+                  onChanged: (v) => setState(() => _selectedMeasureType = v ?? "GRBS (mg/dL)"),
+                ),
               ),
+              const SizedBox(width: 12),
+              Expanded(
+                flex: 2,
+                child: TextFormField(
+                  controller: _glucoseValueController,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    labelText: "Value",
+                    hintText: "e.g. 185",
+                    prefixIcon: const Icon(Icons.water_drop_outlined, color: AppConstants.primaryOrange),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          // Recorded By & PHC Name
+          Row(
+            children: [
+              Expanded(
+                child: DropdownButtonFormField<String>(
+                  value: _selectedRecordedBy,
+                  decoration: InputDecoration(
+                    labelText: "Recorded By",
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  items: [
+                    "CHC / PHC Staff",
+                    "ASHA Worker",
+                    "Camp Screener",
+                    "Lab Technician",
+                    "Self Reported",
+                  ].map((r) => DropdownMenuItem(value: r, child: Text(r, style: const TextStyle(fontSize: 11)))).toList(),
+                  onChanged: (v) => setState(() => _selectedRecordedBy = v ?? "CHC / PHC Staff"),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: TextFormField(
+                  controller: _chcPhcCenterController,
+                  decoration: InputDecoration(
+                    labelText: "PHC / Center Name",
+                    hintText: "e.g. Ripponpete PHC",
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          // Blood Pressure
+          Row(
+            children: [
+              Expanded(
+                child: TextFormField(
+                  controller: _systolicBpController,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    labelText: "Systolic BP",
+                    hintText: "e.g. 120",
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: TextFormField(
+                  controller: _diastolicBpController,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    labelText: "Diastolic BP",
+                    hintText: "e.g. 80",
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStation3Card() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              CircleAvatar(radius: 10, backgroundColor: AppConstants.primaryOrange, child: Text("3", style: TextStyle(fontSize: 10, color: Colors.white, fontWeight: FontWeight.bold))),
+              SizedBox(width: 8),
+              Text("Station 3: Eye Assessment & Fundus", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Color(0xFF0F172A))),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          // Fundus Captured YES / NO Switch
+          SwitchListTile(
+            title: const Text("Fundus Image Captured (Remidio Camera)", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+            subtitle: Text(_fundusCaptured ? "Camera photo attached" : "Not captured (Reason recorded)", style: const TextStyle(fontSize: 10, color: AppConstants.textMuted)),
+            value: _fundusCaptured,
+            activeColor: AppConstants.primaryOrange,
+            onChanged: (v) => setState(() => _fundusCaptured = v),
+            contentPadding: EdgeInsets.zero,
+          ),
+
+          if (!_fundusCaptured) ...[
+            const SizedBox(height: 8),
+            DropdownButtonFormField<String>(
+              value: _fundusNotCapturedReason,
+              decoration: InputDecoration(
+                labelText: "Reason Fundus Not Captured *",
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              items: [
+                "Pupil not dilated",
+                "Dense Cataract (Hazy media)",
+                "Patient uncooperative",
+                "Camera / Remidio at Base Hospital",
+                "Technical limitation",
+                "Patient refused",
+              ].map((r) => DropdownMenuItem(value: r, child: Text(r, style: const TextStyle(fontSize: 11)))).toList(),
+              onChanged: (v) => setState(() => _fundusNotCapturedReason = v ?? "Pupil not dilated"),
+            ),
+          ] else ...[
+            const SizedBox(height: 8),
+            // Photo capture buttons
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => _pickImage(ImageSource.camera),
+                    icon: const Icon(Icons.camera_alt, color: AppConstants.primaryOrange, size: 18),
+                    label: const Text("Take Photo", style: TextStyle(color: AppConstants.primaryOrange, fontSize: 11, fontWeight: FontWeight.bold)),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => _pickImage(ImageSource.gallery),
+                    icon: const Icon(Icons.photo_library, color: AppConstants.primaryOrange, size: 18),
+                    label: const Text("From Gallery", style: TextStyle(color: AppConstants.primaryOrange, fontSize: 11, fontWeight: FontWeight.bold)),
+                  ),
+                ),
+              ],
+            ),
+            if (_imageFile != null) ...[
+              const SizedBox(height: 10),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: Image.file(_imageFile!, height: 140, width: double.infinity, fit: BoxFit.cover),
+              ),
+            ],
+          ],
+
+          const SizedBox(height: 14),
+
+          // Cataract Status
+          DropdownButtonFormField<String>(
+            value: _selectedCataract,
+            decoration: InputDecoration(
+              labelText: "Cataract Finding",
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            items: [
+              "None",
+              "Immature Cataract",
+              "Mature Cataract",
+              "Hypermature Cataract",
+              "Pseudophakic (IOL)",
+            ].map((c) => DropdownMenuItem(value: c, child: Text(c, style: const TextStyle(fontSize: 12)))).toList(),
+            onChanged: (v) => setState(() => _selectedCataract = v ?? "None"),
+          ),
+          const SizedBox(height: 12),
+
+          // DR Severity Status
+          DropdownButtonFormField<String>(
+            value: _selectedDrStatus,
+            decoration: InputDecoration(
+              labelText: "Diabetic Retinopathy Diagnosis *",
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            items: AppConstants.drStatusOptions.map((dr) => DropdownMenuItem(value: dr, child: Text(dr, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)))).toList(),
+            onChanged: (v) => setState(() => _selectedDrStatus = v ?? "No DR"),
+          ),
+          const SizedBox(height: 12),
+
+          // Clinical Advice
+          DropdownButtonFormField<String>(
+            value: _selectedAdvice,
+            decoration: InputDecoration(
+              labelText: "Clinical Advice / Plan *",
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            items: AppConstants.adviceOptions.map((a) => DropdownMenuItem(value: a, child: Text(a, style: const TextStyle(fontSize: 12)))).toList(),
+            onChanged: (v) => setState(() => _selectedAdvice = v ?? "Annual Review"),
+          ),
+          const SizedBox(height: 12),
+
+          // Refer to Base Hospital (RBH)
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: _referToBaseHospital ? const Color(0xFFFEF2F2) : const Color(0xFFF8FAFC),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: _referToBaseHospital ? const Color(0xFFFCA5A5) : const Color(0xFFE2E8F0)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SwitchListTile(
+                  title: const Text("Refer to Base Hospital (RBH)", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF991B1B))),
+                  subtitle: const Text("Requires tertiary retina evaluation / laser / surgery at Sankara Eye Hospital", style: TextStyle(fontSize: 10, color: AppConstants.textMuted)),
+                  value: _referToBaseHospital,
+                  activeColor: AppConstants.dangerRed,
+                  onChanged: (v) => setState(() => _referToBaseHospital = v),
+                  contentPadding: EdgeInsets.zero,
+                ),
+                if (_referToBaseHospital) ...[
+                  const SizedBox(height: 8),
+                  TextFormField(
+                    controller: _baseHospitalRemarksController,
+                    decoration: InputDecoration(
+                      labelText: "Surgeon / Base Hospital Notes *",
+                      hintText: "e.g. Severe PDR with Vitreous Hemorrhage - Urgent PRP laser required",
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                  ),
+                ],
+              ],
             ),
           ),
-        );
-      }).toList(),
+          const SizedBox(height: 12),
+
+          // General Clinical Remarks
+          TextFormField(
+            controller: _remarksController,
+            maxLines: 2,
+            decoration: InputDecoration(
+              labelText: "General Clinical Remarks",
+              hintText: "General observations, systemic history...",
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
